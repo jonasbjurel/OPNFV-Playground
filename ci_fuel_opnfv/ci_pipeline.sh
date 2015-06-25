@@ -39,20 +39,23 @@ SCRIPT_PATH=`dirname $SCRIPT`
 HOME_SUFIX=${SCRIPT_PATH##/home/}
 USER=${HOME_SUFIX%%/*}
 BRANCH="master"
+TMPDIR="${SCRIPT_PATH}/tmp"
 BUILD_CACHE="${SCRIPT_PATH}/cache"
 BUILD_ARTIFACT_PATH="genesis/fuel/build_result"
 BUILD_ARTIFACT_STORE="artifact"
 BUILD_CACHE_URI="file://${BUILD_CACHE}"
+RESULT_FILE="result.log"
 VERSION=`date -u +%F--%H.%M`
 ISO="opnfv-${VERSION}.iso"
 ISO_META="${ISO}.txt"
-VIRT_STORAGE_PATH="/root/virtstorage"
+#VIRT_STORAGE_PATH="${SCRIPT_PATH}/virtstorage"
+VIRT_STORAGE_PATH="/bulk/virtstorage"
 DEA="./deploy_config/libvirt/conf/dea.yaml"
 DHA="./deploy_config/libvirt/conf/dha.yaml"
 
 function put_result {
     su -c "echo 'Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time:     Total build time:     Total deployment time:' >> ${RESULT_FILE}" ${USER}
-    su -c "echo 'Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time:     Total build time:     Total deployment time:' > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci_result.log" ${USER}
+    su -c "echo 'Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time:     Total build time:     Total deployment time:' > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}" ${USER}
 }
 
 while getopts "u:b:h" OPTION
@@ -79,7 +82,7 @@ do
     esac
 done
 
-if [ id -u != 0 ]; then
+if [ `id -u` != 0 ]; then
   echo "This script must run as root!!!!"
   usage
   exit 1
@@ -88,7 +91,7 @@ fi
 if [ -z $@ ]; then
   usage
   exit 1
-fi
+fi 
 LF_USER=$(echo $@ | cut -d ' ' -f ${OPTIND})
 GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/genesis"
 
@@ -112,7 +115,6 @@ su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}" ${USER}
 # I did not want to steal from him by simply adding his answer to mine.
 #exec 2>&1
 
-#script -a ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/output.log
 RESULT="Cloning failed"
 echo "========= Cloning repository ========="
 rm -rf genesis
