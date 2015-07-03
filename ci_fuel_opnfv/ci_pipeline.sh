@@ -9,7 +9,7 @@ set -e
 # http://www.apache.org/licenses/LICENSE-2.0
 ##############################################################################
 
-trap 'if [ RESULT != "SUCCESS" ]; then \ 
+trap 'if [ ${RESULT} != "SUCCESS" ]; then \
     echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"; \
     usage; \
   fi; \
