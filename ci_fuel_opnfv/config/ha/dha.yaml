@@ -1,0 +1,42 @@
+title: Deployment Hardware Adapter (DHA)
+# DHA API version supported
+version: 1.1
+created: Sat Apr 25 16:26:22 UTC 2015
+comment: Small libvirt setup
+
+# Adapter to use for this definition
+adapter: libvirt
+
+# Node list.
+# Mandatory property is id, all other properties are adapter specific.
+
+nodes:
+- id: 1
+  libvirtName: controller1
+  libvirtTemplate: libvirt/vms/controller.xml
+- id: 2
+  libvirtName: compute1
+  libvirtTemplate: libvirt/vms/compute.xml
+- id: 3
+  libvirtName: compute2
+  libvirtTemplate: libvirt/vms/compute.xml
+- id: 4
+  libvirtName: compute3
+  libvirtTemplate: libvirt/vms/compute.xml
+- id: 5
+  libvirtName: compute4
+  libvirtTemplate: libvirt/vms/compute.xml
+- id: 6
+  libvirtName: compute5
+  libvirtTemplate: libvirt/vms/compute.xml
+- id: 7
+  libvirtName: fuel-master
+  libvirtTemplate: libvirt/vms/fuel.xml
+  isFuel: yes
+  username: root
+  password: r00tme
+
+disks:
+  fuel: 30G
+  controller: 30G
+  compute: 30G
