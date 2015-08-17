@@ -128,16 +128,10 @@ function fetch_config() {
 #
 function put_result {
     PUSH_PATH=`pwd`
-    if [ `whoami` == ${USER} ]; then
-	echo 'Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME} min' >> ${RESULT_FILE}
-	if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
-	    echo 'Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME} min' > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}
-	fi
-    else
-	su -c "echo 'Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME} min' >> ${RESULT_FILE}" ${USER}
-	if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
-	    su -c "echo 'Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME} min' > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}" ${USER}
-	fi
+    LOG_MSG='Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME    Total functest time: ${TEST_TIME}'
+    su -c "echo '$LOG_MSG' >> ${RESULT_FILE}" ${USER}
+    if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
+	su -c "echo '$LOG_MSG'' > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}" ${USER}
     fi
     cd $PUSH_PATH
 }
@@ -390,8 +384,8 @@ function func_test {
 
 function clean {
     # DEBUG Option, set ANY_CLEAN=0 if you want to preserve the environment untouched!
-    ANY_CLEAN=0
-    if [ $ANY_CLEAN -eq 1 ]; then
+    DEBUG_ANY_CLEAN=1
+    if [ $DEBUG_ANY_CLEAN -eq 1 ]; then
 	PUSH_PATH=`pwd`
 	echo
 	echo "========== Cleaning up environment =========="
