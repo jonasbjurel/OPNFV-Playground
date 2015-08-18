@@ -17,8 +17,10 @@ trap 'if [ ${rc} -ne 0 ]; then \
     fi; \
   fi; \
   put_result; \
-  chown ${USER}; ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
-  chgrp rnd ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
+  if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then \
+     chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
+     chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
+  fi; \
   echo "result: $rc"; \
   clean; \
   STATUS="IDLE"; \
@@ -128,10 +130,10 @@ function fetch_config() {
 #
 function put_result {
     PUSH_PATH=`pwd`
-    LOG_MSG='Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME    Total functest time: ${TEST_TIME}'
-    su -c "echo '$LOG_MSG' >> ${RESULT_FILE}" ${USER}
+    LOG_MSG='Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME}    Total functest time: ${TEST_TIME}'
+    su -c "echo $LOG_MSG >> ${SCRIPT_PATH}/${RESULT_FILE}" ${USER}
     if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
-	su -c "echo '$LOG_MSG'' > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}" ${USER}
+	su -c "echo $LOG_MSG > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}" ${USER}
     fi
     cd $PUSH_PATH
 }
@@ -269,6 +271,7 @@ function deploy {
 function func_test {
     PUSH_PATH=`pwd`
     cd ${SCRIPT_PATH}
+    echo
     echo "========== Preparing func test =========="
     RESULT="OPNV Functional test setup failed"
     STATUS="FUNCTEST_PREP"
@@ -286,6 +289,10 @@ function func_test {
     su -c "./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD} ${CTRL_FQDN}" ${USER}
 
     # modify openrc with public AUTH access end point
+    if [ ! -e openrc ]; then
+	echo "Fetching openrc failed"
+	exit 1
+    fi
     su -c "mv openrc openrc.orig" ${USER}
     EXT_AUTH_URL="'http:\/\/${OS_IP}:5000\/v2.0\/'"
     OS_AUTH_LINE=`grep -n OS_AUTH_URL openrc.orig | cut -d \: -f 1`
@@ -553,6 +560,13 @@ fi
 
 # Redirect stdout and stderr to the log-file
 cd ${SCRIPT_PATH}
+if [ $BUILD -eq 0 ]; then
+    BRANCH="NIL"
+    COMMIT_ID="NIL"
+    ISO_META="NIL"
+    ISO="NIL"
+fi
+
 su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}" ${USER}
 exec > >(tee ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log)
 exec 2>&1
@@ -560,12 +574,6 @@ exec 2>&1
 
 GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/genesis ${CHANGE_SET}"
 
-if [ $BUILD -eq 0 ]; then
-    BRANCH="UNKNOWN"
-    COMMIT_ID="UNKNOWN"
-    ISO_META="NIL"
-    ISO="NIL"
-fi
 
 echo "========== Running CI-pipeline with the following parameters =========="
 echo "Local user: ${USER}"
