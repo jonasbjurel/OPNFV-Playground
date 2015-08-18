@@ -130,7 +130,7 @@ function fetch_config() {
 #
 function put_result {
     PUSH_PATH=`pwd`
-    LOG_MSG='Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME}    Total functest time: ${TEST_TIME}'
+    LOG_MSG="Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME}    Total functest time: ${TEST_TIME}"
     su -c "echo $LOG_MSG >> ${SCRIPT_PATH}/${RESULT_FILE}" ${USER}
     if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
 	su -c "echo $LOG_MSG > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}" ${USER}
