@@ -34,37 +34,42 @@ usage ()
 {
     PUSH_PATH=`pwd`
     cat << EOF
-$0 - Full Fuel@OPNFV CI Pipeline:
+$0 - Simple Fuel@OPNFV CI Pipeline:
 1) Clones and check-out Fuel@OPNFV from OPNFV Repos"
 2) Builds Fuel@OPNFV
-3) Deploys a Fuel@OPNFV using nested KVM virtualization
+3) Deploys a Fuel@OPNFV using local nested KVM virtualization
 4) Performs basic health tests
-5) Future - Perfoms ordinary OPNFV CI pipeline functional tests
+5) Perfoms ordinary OPNFV CI pipeline functional tests
  
-usage: $0 [-h] [-a] [-u local user] [-r local repo path] [-b branch | -c change-set ] remote-Linux-foundation-user
+usage: $0 [-h] [-a] [-u local user] [-r local repo path] [-b branch | -c change-set ] [-BDT] [-t] [-i Iso image] [-p | -P] [-I] [Linux foundation user]
 
 -h Prints this message.
 -a Deploys a High availability configuration
 -u local linux user, only needed if the script is not placed under the home of the user that
    should be used for non priviledged bash actions.
--r Path to a local repository rather than using standard Fuel@OPNFV repo
--b Branch/commit Id to use.
--c Changeset to use
--B Skip build stage
--D Skip deploy stage
+-r Path to a local repository rather than using standard Fuel@OPNFV repo, this option can not be combined with the -c, -B, or -I options.
+-b Branch/commit Id to use, this option can not be combined with -B
+-c Changeset to use, this option requires a "Linux foundation user" and can not be combined with the -B or -r options. 
+-I Invalidate cache, invalidates local cache and builds all from upstream, cannot be accompanioned with the -B option. 
+-B Skip build stage, this option cannot be combined with the -r, -b, -c or -D options.
+-D Skip deploy stage, this option must either be accompanioned with the -i <iso> option or else it can not be accompanioned with the -B option
 -T Skip functest stage
--t Only perform smoke test
--i iso image (needed if build stage is skipped)
--p Purge all including running deployment - but excluding cache
--P purge ALL
--I Invalidate cache
+-t Only perform smoke test, this option can not be accompanioned with the -T option,
+-i iso image (needed if build stage is skipped and no previous deployment exists), this option asumes the -B option.
+-p Post run - Purge all including running deployment - but excluding cache
+-P Post run - purge ALL
 
 NOTE: This script must be run as root!
+======================================
 
 Examples:
-sudo $0 -b my_lf_user  -  (works out of the master branch)
-sudo $0 -b stable/arno my_lf_user  -  (works out of stable/arno branch)
-sudo $0 -c refs/changes/41/941/1 my_lf_user  -  (works out of a non merged patch)
+sudo $0 -b master -  (Clones, Builds, Deploys & Tests out of the master branch)
+sudo $0 -b stable/arno  -  (Clones, Builds, Deploys & Tests out of stable/arno branch)
+sudo $0 -c refs/changes/41/941/1 <my_lf_user> - (Clones, Builds, Deploys & Tests out of the non merged patch "/41/941/1")
+sudo $0 -b master -DT - (Only builds master)
+sudo $0 -T - (Only tests an existing seployment)
+sudo $0 -BDT -P (Purges all except the installation)
+
 EOF
     cd $PUSH_PATH
 }
@@ -130,7 +135,7 @@ function fetch_config() {
 #
 function put_result {
     PUSH_PATH=`pwd`
-    LOG_MSG="Result: ${RESULT}     Build Id: ${VERSION}      Branch: ${BRANCH}     Commit ID: ${COMMIT_ID}     Total ci pipeline time: ${TOTAL_TIME} min    Total build time: ${BUILD_TIME} min     Total deployment time: ${DEPLOY_TIME}    Total functest time: ${TEST_TIME}"
+    LOG_MSG="Result: ${RESULT} \| Build Id: ${VERSION} \| Branch: ${BRANCH} \| Commit ID: ${COMMIT_ID} \| Total ci pipeline time: ${TOTAL_TIME} min \| Total build time: ${BUILD_TIME} min \| Total deployment time: ${DEPLOY_TIME} \| Total functest time: ${TEST_TIME}"
     su -c "echo $LOG_MSG >> ${SCRIPT_PATH}/${RESULT_FILE}" ${USER}
     if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
 	su -c "echo $LOG_MSG > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}" ${USER}
@@ -155,8 +160,108 @@ function put_status {
 }
 
 #
-# Endreport CI status 
+# END report CI status 
 ############################################################################
+
+############################################################################
+# Evaluate parameters
+#
+function eval_params {
+
+    if [ `id -u` != 0 ]; then
+	echo "This script must run as root!!!!"
+	echo="Not ran as root"
+	usage
+	RESULT="ERROR - Not ran as root"
+	exit 1
+    fi
+
+    if [ $CHANGE_SET_PROVIDED -eq 1 ]; then
+	if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
+	    echo "Can not operate on the change-set: -c $CHANGE_SET while working from the local repository -r $REPO_PATH"
+	    usage
+	    RESULT="ERROR - Faulty script input parameters"
+	    exit 1
+	fi
+
+	if [ $BUILD -eq 0 ]; then
+	    echo "Providing a changeset: -c $CHANGE_SET while providing the -B option (skip build) does not make sense"
+	    usage
+	    RESULT="ERROR - Faulty script input parameters"
+	    exit 1
+	fi
+
+	if [[ -z $LF_USER ]]; then
+	    echo "LF user provided needs to be provided in order to operate on a change-set"
+	    usage
+	    RESULT="ERROR - No LF user provided"
+	    exit 1$CHANGE_SET_PROVIDED -eq 0
+	fi 
+    fi
+
+    if [ $BUILD -eq 1 ]; then
+	if [ $DEPLOY -eq 0 ] && [ $TEST -eq 1 ]; then
+	    echo "You need to deploy a build if you want to test it, option -D alone does not make sense (-DT could make sense if you only want to build, or -BD if you want to test an existing deployment)"
+	    usage
+	    RESULT="ERROR - Faulty script input parameters"
+	    exit 1
+	fi
+	
+	if [ $LOCAL_ISO_PROVIDED -eq 1 ]; then
+	    echo "Since build has not been disabled (-B) it makes no sense to provide a local iso (-i $LOCAL_ISO)"
+	    usage
+	    RESULT="ERROR - Faulty script input parameters"
+	    exit 1
+	fi
+    fi
+
+    if [ $BUILD -eq 0 ]; then
+	if [ $CHANGE_SET_PROVIDED -eq 1] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $BRANCH_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
+	    echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), a branch (-b ...) or to invalidate the build cache (-I)"
+	    usage
+	    RESULT="ERROR - Faulty script input parameters"
+	    exit 1
+	fi
+	BRANCH="NIL"
+	COMMIT_ID="NIL"
+	ISO_META="NIL"
+	ISO="NIL"
+    fi
+
+    if [ $DEPLOY -eq 1 ]; then
+	if [ $BUILD -eq 0 ] && [ $LOCAL_ISO_PROVIDED -eq 0 ]; then
+	    echo "No ISO provided (by -i <iso>) while build is disabled (-B). Nothing to deploy!!!!!"
+	    usage
+	    RESULT="ERROR - Faulty script input parameters"
+	    exit 1
+	fi
+    fi
+
+    if [ $DEPLOY -eq 0 ]; then
+	if [ $LOCAL_ISO_PROVIDED -eq 1 ]; then
+	    echo "Since deploy is disabled it makes no sense to provide a local iso (-i $LOCAL_ISO)"
+	    usage
+	    RESULT="ERROR - Faulty script input parameters"
+	    exit 1
+	fi
+    fi
+
+    if [ $TEST -eq 1 ]; then
+	if [ $DEPLOY -eq 0 ]; then
+	    echo "Since nothing will be deployed (-D) an existing deployment will be tested provided that one exists"
+	fi
+    fi
+
+    if [[ -z $LF_USER ]]; then
+	echo "Since no LinuxFoundation user is provided, the repositories will be pulled using https:// methods (as aposed to git:// or ssh://)"
+    fi 
+
+}
+
+#
+# END Evaluate parameters
+############################################################################
+
 
 ############################################################################
 # BEGIN of clone repo
@@ -164,13 +269,13 @@ function put_status {
 
 function clone_repo {
     PUSH_PATH=`pwd`
-    RESULT="GIT Cloning failed"
+    RESULT="ERROR - GIT Cloning failed"
     STATUS="CLONING"
     put_status
 
     cd ${SCRIPT_PATH}
-    if [ ${LOCAL_REPO} == 0 ]; then
-	if [ -z $CHANGE_SET ]; then
+    if [ ${LOCAL_REPO_PROVIDED} -eq 0 ]; then
+	if [ $CHANGE_SET_PROVIDED -eq 0 ]; then
 	    REPO_PATH=${SCRIPT_PATH}/"genesis"
 	else
 	    REPO_PATH=${SCRIPT_PATH}/${CHANGE_SET}
@@ -178,13 +283,19 @@ function clone_repo {
     fi
     BUILD_ARTIFACT_PATH="${REPO_PATH}/fuel/build_result"
 
-    if [ -${LOCAL_REPO} -eq 0 ]; then
+    if [ -${LOCAL_REPO_PROVIDED} -eq 0 ]; then
 	rm -rf ${REPO_PATH}
-	echo
-	echo "========== Cloning repository ${GIT_SRC} =========="
-	su -c "git clone ${GIT_SRC}" ${USER}
+	if [[ -z $LF_USER ]]; then
+	    echo
+	    echo "========== Cloning repository ${GIT_HTTPS_SRC} =========="
+	    su -c "git clone ${GIT_HTTPS_SRC}" ${USER}
+	else
+	    echo
+	    echo "========== Cloning repository ${GIT_SRC} =========="
+	    su -c "git clone ${GIT_SRC}" ${USER}
+	fi
 
-	if [ -z $CHANGE_SET ]; then
+	if [ $CHANGE_SET_PROVIDED -eq 0 ]; then
 	    echo "========= Checking out branch/tag ${BRANCH} ========="
 	    su -c "cd ${REPO_PATH} && git checkout ${BRANCH}" ${USER}
 	else
@@ -207,7 +318,7 @@ function clone_repo {
 function build {
     PUSH_PATH=`pwd`
     echo "========== Preparing build =========="
-    RESULT="Build failed"
+    RESULT="ERROR - Build failed"
     STATUS="BUILDING"
     put_status
 
@@ -242,7 +353,7 @@ function deploy {
     PUSH_PATH=`pwd`
     echo
     echo "========== Deploying =========="
-    RESULT="Deploy failed"
+    RESULT="ERROR - Deploy failed"
     STATUS="DEPLOYING"
     put_status
 
@@ -273,7 +384,7 @@ function func_test {
     cd ${SCRIPT_PATH}
     echo
     echo "========== Preparing func test =========="
-    RESULT="OPNV Functional test setup failed"
+    RESULT="ERROR - OPNV Functional test setup failed"
     STATUS="FUNCTEST_PREP"
     put_status
     # Remove any residual of functest environment
@@ -321,7 +432,7 @@ function func_test {
 
     echo
     echo "========== Runing Tempest smoke test =========="
-    RESULT="OPNV Functional Tempest testv failed"
+    RESULT="ERROR OPNV Functional Tempest test failed"
     STATUS="FUNCTEST_TEMPEST"
     put_status
 
@@ -336,7 +447,7 @@ function func_test {
     if [ $SMOKE -eq 0 ]; then 
 	echo
 	echo "========== Running Rally tests =========="
-	RESULT="OPNV Functional Rally test failed"
+	RESULT="ERROR - OPNV Functional Rally test failed"
 	STATUS="FUNCTEST_RALLY"
 	put_status
 
@@ -353,7 +464,7 @@ function func_test {
 
 	echo
 	echo "========== Runing ODL test =========="
-	RESULT="OPNV Functional ODL test failed"
+	RESULT="ERROR - OPNV Functional ODL test failed"
 	STATUS="FUNCTEST_ODL"
 	put_status
 	
@@ -368,7 +479,7 @@ function func_test {
 
 	echo
 	echo "========== Runing vPING test =========="
-	RESULT="OPNV Functional vPING failed"
+	RESULT="ERROR - OPNV Functional vPING failed"
 	STATUS="FUNCTEST_VPING"
 	put_status
 
@@ -402,7 +513,9 @@ function clean {
 	cd ${SCRIPT_PATH}
 	# <Fix> Such that clean up can use su
 	#su -c "source credentials/openrc && python functest/testcases/config_functest.py -f -d functest/ clean" ${USER}
-	cd ${SCRIPT_PATH} && source credentials/openrc && python functest/testcases/config_functest.py -f -d functest/ clean
+	if [ -e "credentials/openrc" ]; then
+	    cd ${SCRIPT_PATH} && source credentials/openrc && python functest/testcases/config_functest.py -f -d functest/ clean
+	fi
 	cd ${SCRIPT_PATH} && rm -rf functest
 	cd ${HOME} && rm -rf functest
 	cd ${SCRIPT_PATH} && rm -rf genesis
@@ -443,18 +556,21 @@ BRANCH="master"
 CHANGE_SET=""
 DEA="${SCRIPT_PATH}/config/multinode/dea.yaml"
 DHA="${SCRIPT_PATH}/config/multinode/dha.yaml"
-LOCAL_REPO=0
 BUILD=1
 DEPLOY=1
 TEST=1
 SMOKE=0
-ISO_PROVIDED=0
+LOCAL_ISO_PROVIDED=0
+CHANGE_SET_PROVIDED=0
+LOCAL_REPO_PROVIDED=0
+BRANCH_PROVIDED=0
+USER_PROVIDED=0
 INVALIDATE_CACHE=0
 PURGE_MOST=0
 PURGE_ALL=0
 
 #RESULT-CODES
-RESULT="Script initialization failed"
+RESULT="ERROR - Script initialization failed"
 COMMIT_ID="NIL"
 TOTAL_TIME=0
 BUILD_TIME=0
@@ -484,19 +600,22 @@ do
 	    ;;
 	u)
 	    USER=${OPTARG}
+	    USER_PROVIDED=1
 	    ;;
 
 	b)
 	    BRANCH=${OPTARG}
+	    BRANCH_PROVIDED=1
 	    ;;
 
 	c)
 	    CHANGE_SET=${OPTARG}
+	    CHANGE_SET_PROVIDED=1
 	    ;;
 
 	r)
 	    REPO_PATH=${OPTARG}
-	    LOCAL_REPO=1
+	    LOCAL_REPO_PROVIDED=1
 	    ;;
 
 	B)
@@ -513,7 +632,7 @@ do
 
 	i)
 	    LOCAL_ISO=${OPTARG}
-	    ISO_PROVIDED=1
+	    LOCAL_ISO_PROVIDED=1
 	    ;;
 
 	t)
@@ -541,48 +660,57 @@ do
 done
 
 LF_USER=$(echo $@ | cut -d ' ' -f ${OPTIND})
-# <FIX> Perform a stricter/better input parameter validation
 
-if [ `id -u` != 0 ]; then
-  echo "This script must run as root!!!!"
-  echo="Not ran as root"
-  usage
-  RESULT="Not ran as root"
-  exit 1
-fi
-
-if [[ -z $LF_USER ]]; then
-  echo "No LF user provided"
-  usage
-  RESULT="No LF user provided"
-  exit 1
-fi 
+cd ${SCRIPT_PATH}
 
 # Redirect stdout and stderr to the log-file
-cd ${SCRIPT_PATH}
-if [ $BUILD -eq 0 ]; then
-    BRANCH="NIL"
-    COMMIT_ID="NIL"
-    ISO_META="NIL"
-    ISO="NIL"
-fi
-
 su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}" ${USER}
 exec > >(tee ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log)
 exec 2>&1
 
+eval_params
 
 GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/genesis ${CHANGE_SET}"
-
+GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/genesis"
 
 echo "========== Running CI-pipeline with the following parameters =========="
+echo "Starting CI with the following script options: $0 $@"
 echo "Local user: ${USER}"
-echo "Gerrit user: ${LF_USER}"
+echo "LinuxFoundation Gerrit user: ${LF_USER}"
 echo "Branch: ${BRANCH}"
+
 echo "Version: ${VERSION}"
+echo "Change-set: ${CHANGE_SET}"
+if [[ -z $LF_USER ]]; then
+    METHOD="https://"
+else
+    METHOD="ssh://"
+fi
+echo "Repository clone method: $METHOD"
 echo "Cache URI: ${BUILD_CACHE_URI}"
 echo "Build artifact output: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}"
-# <FIX> Add more info
+echo "Local Repository: ${LOCAL_REPO}"
+echo "Local ISO: ${LOCAL_ISO}"
+if [ $BUILD -eq 0 ]; then
+ echo "Build: ===Skip==="
+else
+ echo "Build: ===Staged==="
+fi
+if [ $DEPLOY -eq 0 ]; then
+ echo "Deploy: ===Skip==="
+else
+ echo "Deploy: ===Staged==="
+fi
+if [ $TEST -eq 0 ]; then
+ echo "Test: ===Skip==="
+else
+ echo "Test: ===Staged==="
+fi
+#<FIX> Temporary test stub - must be removed before <MERGE>
+echo "Test finished - exiting"
+RESULT="SUCCESS"
+rc=0
+exit 0
 
 if [ $BUILD -eq 1 ]; then
     time0=`date +%s`
