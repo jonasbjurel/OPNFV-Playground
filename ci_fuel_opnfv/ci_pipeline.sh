@@ -163,6 +163,7 @@ function put_status {
 # END report CI status 
 ############################################################################
 
+
 ############################################################################
 # Evaluate parameters
 #
@@ -707,10 +708,10 @@ else
  echo "Test: ===Staged==="
 fi
 #<FIX> Temporary test stub - must be removed before <MERGE>
-echo "Test finished - exiting"
-RESULT="SUCCESS"
-rc=0
-exit 0
+#echo "Test finished - exiting"
+#RESULT="SUCCESS"
+#rc=0
+#exit 0
 
 if [ $BUILD -eq 1 ]; then
     time0=`date +%s`
