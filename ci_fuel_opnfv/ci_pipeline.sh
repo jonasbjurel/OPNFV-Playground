@@ -16,6 +16,7 @@ trap 'if [ ${rc} -ne 0 ]; then \
       echo "FAILED - see the log for details: ${RESULT_FILE}"; \
     fi; \
   fi; \
+  TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME]; \
   put_result; \
   if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then \
      chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
@@ -223,10 +224,6 @@ function eval_params {
 	    RESULT="ERROR - Faulty script input parameters"
 	    exit 1
 	fi
-	BRANCH="NIL"
-	COMMIT_ID="NIL"
-	ISO_META="NIL"
-	ISO="NIL"
     fi
 
     if [ $DEPLOY -eq 1 ]; then
@@ -456,12 +453,12 @@ function func_test {
 	# <FIX> Rally cant run as other than root - root-cause is probably that func test cant install with su ".." 
 	# <FIX> Until rally runs OK, set +e
 	set +e
-	su -c "source credentials/openrc && python functest/testcases/VIM/OpenStack/CI/libraries/run_rally.py functest/ all" ${USER}
-	#source credentials/openrc && python functest/testcases/VIM/OpenStack/CI/libraries/run_rally.py functest/ all
+	#su -c "source credentials/openrc && python functest/testcases/VIM/OpenStack/CI/libraries/run_rally.py functest/ all" ${USER}
+	source credentials/openrc && python functest/testcases/VIM/OpenStack/CI/libraries/run_rally.py functest/ all
 	set -e
 
-#	su -c "cp ~/functest/results/rally/*.html ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/." ${USER} 
-#	su -c "cp ~/functest/results/rally/*.json ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/." ${USER} 
+	su -c "cp ~/functest/results/rally/*.html ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/. || :" ${USER} 
+	su -c "cp ~/functest/results/rally/*.json ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/. || :" ${USER} 
 
 	echo
 	echo "========== Runing ODL test =========="
@@ -648,7 +645,7 @@ do
 	    PURGE_MOST=1
 	    ;;
 
-	p)
+	P)
 	    PURGE_ALL=1
 	    ;;
 
@@ -661,6 +658,12 @@ do
 done
 
 LF_USER=$(echo $@ | cut -d ' ' -f ${OPTIND})
+if [ $BUILD -eq 0 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ]; then 
+    BRANCH="NIL"
+    COMMIT_ID="NIL"
+    ISO_META="NIL"
+    ISO="NIL"
+fi
 
 cd ${SCRIPT_PATH}
 
