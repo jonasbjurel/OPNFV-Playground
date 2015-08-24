@@ -16,8 +16,6 @@ PIP_PKG="GitPython python-novaclient python-neutronclient python-glanceclient py
 
 sudo apt-get update
 
-sudo apt-get update
-
 if [ `id -u` != 0 ]; then
   echo "This script must run as root!!!!"
   echo "I.e. sudo $0"
