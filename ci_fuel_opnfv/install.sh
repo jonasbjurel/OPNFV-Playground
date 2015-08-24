@@ -25,11 +25,7 @@ if [ `id -u` != 0 ]; then
 fi
 
 if [[ -z `dpkg -s lsb-core | grep "Status: install ok installed"` ]]; then
-<<<<<<< HEAD
   echo "This script requires the \"lsb-core\" package"
-=======
-  echo "This scrip requires the \"lsb-core\" package"
->>>>>>> 3989b724033468909f3f6c7855bfbc184a82bb49
   echo "Do you want to install it now?"
   echo "(Y/n)"
   read ACCEPT
