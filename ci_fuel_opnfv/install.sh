@@ -11,7 +11,7 @@ SCRIPT_PATH=`cd $(dirname $0); pwd`
 USER=`/usr/bin/logname`
 
 APT_PKG="git make curl libvirt-bin libpq-dev qemu-kvm qemu-system tightvncserver virt-manager sshpass fuseiso genisoimage blackbox xterm python-pip python-git python-dev python-oslo.config python-pip python-dev libffi-dev libxml2-dev libxslt1-dev libffi-dev libxml2-dev libxslt1-dev expect curl"
-PIP_PKG="GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient pyyaml netaddr paramiko lxml scp GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient debtcollector netifaces"
+PIP_PKG="GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient pyyaml netaddr python-paramiko lxml scp GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient debtcollector netifaces"
 
 if [ `id -u` != 0 ]; then
   echo "This script must run as root!!!!"
