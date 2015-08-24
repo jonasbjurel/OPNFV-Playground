@@ -1,3 +1,4 @@
+#!/bin/bash
 ##############################################################################
 # Copyright (c) 2015 Jonas Bjurel and others.
 # jonasbjurel@hotmail.com
@@ -11,12 +12,25 @@ SCRIPT_PATH=`cd $(dirname $0); pwd`
 USER=`/usr/bin/logname`
 
 APT_PKG="git make curl libvirt-bin libpq-dev qemu-kvm qemu-system tightvncserver virt-manager sshpass fuseiso genisoimage blackbox xterm python-pip python-git python-dev python-oslo.config python-pip python-dev libffi-dev libxml2-dev libxslt1-dev libffi-dev libxml2-dev libxslt1-dev expect curl"
-PIP_PKG="GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient pyyaml netaddr paramiko lxml scp GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient debtcollector netifaces"
+PIP_PKG="GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient pyyaml netaddr python-paramiko lxml scp GitPython python-novaclient python-neutronclient python-glanceclient python-keystoneclient debtcollector netifaces"
+
+sudo apt-get update
 
 if [ `id -u` != 0 ]; then
   echo "This script must run as root!!!!"
   echo "I.e. sudo $0"
   exit 1
+fi
+
+if [[ -z `dpkg -s lsb-core | grep "Status: install ok installed"` ]]; then
+  echo "This script requires the \"lsb-core\" package"
+  echo "Do you want to install it now?"
+  echo "(Y/n)"
+  read ACCEPT
+  if [ $ACCEPT != "Y" ]; then
+      exit 1
+  fi
+  sudo apt-get install lsb-core
 fi
 
 if [[ -z `uname -a | grep Ubuntu` ]]; then
@@ -50,9 +64,9 @@ if [[ -z `lsb_release -a | grep Release | grep 14.04` ]]; then
     exit 1
 fi
 
-echo "This script will install all needed dependencies for the fuel@OPNFV simplified CI engine......
+echo "This script will install all needed dependencies for the fuel@OPNFV simplified CI engine......"
 echo
-echo "Following packages will be installed:
+echo "Following packages will be installed:"
 echo "$APT_PKG $PIP_PKG"
 echo
 echo "As well as the latest Ubuntu supported Docker version"
@@ -69,7 +83,7 @@ if [ $ACCEPT != "Y" ]; then
     echo "$PIP_PKG"
     echo
     echo "update to latest docker version: see: https://docs.docker.com/installation/ubuntulinux/"
-    echo "Add you user to docker and libvirtd groups:"
+    echo "Add your user to docker and libvirtd groups:"
     echo "# sudo adduser <your UID> docker"
     echo "# sudo adduser <your UID> libvirtd"
     echo 
@@ -83,8 +97,6 @@ if [ $ACCEPT != "Y" ]; then
     echo "Good luck!"
     exit 1
 fi
-
-sudo apt-get update
 
 sudo apt-get install $APT_PKG
 
