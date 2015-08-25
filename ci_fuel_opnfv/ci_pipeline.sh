@@ -9,24 +9,41 @@ set -e
 # http://www.apache.org/licenses/LICENSE-2.0
 ##############################################################################
 
-trap 'if [ ${rc} -ne 0 ]; then \
-    if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then \
-      echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"; \
-    else \
-      echo "FAILED - see the log for details: ${RESULT_FILE}"; \
-    fi; \
-  fi; \
-  TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME]; \
-  put_result; \
-  if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then \
-     chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
-     chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
-  fi; \
-  echo "result: $rc"; \
-  clean; \
-  STATUS="IDLE"; \
-  put_status; \
-  echo "Exiting ..."; \' EXIT
+############################################################################
+# BEGIN of Exit handlers
+#
+
+trap do_exit SIGINT SIGTERM EXIT
+
+do_exit () {
+    if [ ${rc} -ne 0 ]; then
+	if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then 
+	    echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"
+	else
+	    echo "FAILED - see the log for details: ${RESULT_FILE}"
+	fi
+    fi
+    TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME];
+    put_result
+    if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then
+	chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
+	chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
+    fi
+    echo "result: $rc"
+    # Note exit code 100 is a special code for no clean-up, 
+    # eg used when another instance is already running
+     if [ $rc -ne 100 ]; then
+	clean;
+	STATUS="IDLE"
+	put_status
+    fi
+    echo "Exiting ..."
+}
+
+#
+# End of Exit handlers
+############################################################################
+
 
 ############################################################################
 # BEGIN of usage description
@@ -258,6 +275,22 @@ function eval_params {
 
 #
 # END Evaluate parameters
+############################################################################
+
+############################################################################
+# Check CI-pipeline availability
+#
+function check_avail {
+if [[ -e ${SCRIPT_PATH}/ci-status ]] && [[ -z `cat ${SCRIPT_PATH}/ci-status | grep IDLE` ]]; then
+    echo "CI-Pipline busy!"
+    RESULT="ERROR - CI-pipeline busy"
+    rc=100
+    exit 100
+fi
+}
+
+#
+# END Check CI-pipeline availability
 ############################################################################
 
 
@@ -673,6 +706,8 @@ exec > >(tee ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log)
 exec 2>&1
 
 eval_params
+
+check_avail
 
 GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/genesis ${CHANGE_SET}"
 GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/genesis"
