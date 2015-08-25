@@ -118,18 +118,18 @@ if [ $ACCEPT != "Y" ]; then
     exit 1
 fi
 
-#sudo apt-get install $APT_PKG
+sudo apt-get install $APT_PKG
 
-#sudo pip install $PIP_PKG
+sudo pip install $PIP_PKG
 
-#pip install --upgrade oslo.config
+pip install --upgrade oslo.config
 
 ACTION="INSTALLING DOCKER"
 
-#curl -sSL https://get.docker.com/ | sh
+curl -sSL https://get.docker.com/ | sh
 
-#sudo adduser ${USER} docker
-#sudo adduser ${USER} libvirtd
+sudo adduser ${USER} docker
+sudo adduser ${USER} libvirtd
 
 echo "===================================================="
 echo "=========== INSTALLATION ALMOST READY =============="
