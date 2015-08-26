@@ -16,6 +16,9 @@ set -e
 trap do_exit SIGINT SIGTERM EXIT
 
 do_exit () {
+    if [ $? -eq 130 ]; then
+	RESULT="INFO: CI-pipeline interrupted"
+    fi
     if [ ${rc} -ne 0 ]; then
 	if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then 
 	    echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"
@@ -37,6 +40,7 @@ do_exit () {
 	STATUS="IDLE"
 	put_status
     fi
+    kill $LOGPID
     echo "Exiting ..."
 }
 
@@ -616,7 +620,6 @@ rc=1
 ############################################################################
 # Start of main
 #
-
 while getopts "au:b:c:r:BDTi:tIpPh" OPTION
 do
     case $OPTION in
@@ -701,9 +704,18 @@ fi
 cd ${SCRIPT_PATH}
 
 # Redirect stdout and stderr to the log-file
+touch test.log > /dev/null
+tail -n 0 -f test.log 2>/dev/null &
+sleep 0.3
+LOGPID=$!
+exec > test.log 2>&1
+
 su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}" ${USER}
-exec > >(tee ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log)
-exec 2>&1
+touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > /dev/null
+tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log 2>/dev/null &
+sleep 0.3
+LOGPID=$!
+exec > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log 2>&1
 
 eval_params
 
