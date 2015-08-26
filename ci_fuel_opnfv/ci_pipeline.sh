@@ -173,10 +173,11 @@ function put_result {
 #
 function put_status {
     PUSH_PATH=`pwd`
+ 
     if [ ${STATUS} == "IDLE" ]; then
-	su -c "cd ${SCRIPT_PATH} && echo '${STATUS} $('date')' > ci-status" ${USER}
+	su -c "mkdir -p ${STATUS_FILE_PATH} && echo '${STATUS} $('date')' > ${STATUS_FILE_PATH}/ci-status" ${USER}
     else
-	su -c "cd ${SCRIPT_PATH} && echo '${STATUS} $('date') ${BRANCH} ${COMMIT_ID} $VERSION}' > ci-status" ${USER}
+	su -c "${STATUS_FILE_PATH} && echo '${STATUS} $('date') ${BRANCH} ${COMMIT_ID} $VERSION}' > ${STATUS_FILE_PATH}/ci-status" ${USER}
     fi
     cd $PUSH_PATH
 }
@@ -285,7 +286,7 @@ function eval_params {
 # Check CI-pipeline availability
 #
 function check_avail {
-if [[ -e ${SCRIPT_PATH}/ci-status ]] && [[ -z `cat ${SCRIPT_PATH}/ci-status | grep IDLE` ]]; then
+if [[ -e ${STATUS_FILE_PATH}/ci-status ]] && [[ -z `cat ${STATUS_FILE_PATH}/ci-status | grep IDLE` ]]; then
     echo "CI-Pipline busy!"
     RESULT="INFO - CI-pipeline busy"
     rc=100
@@ -591,6 +592,7 @@ BRANCH="master"
 CHANGE_SET=""
 DEA="${SCRIPT_PATH}/config/multinode/dea.yaml"
 DHA="${SCRIPT_PATH}/config/multinode/dha.yaml"
+STATUS_FILE_PATH="/var/run/fuel"
 BUILD=1
 DEPLOY=1
 TEST=1
