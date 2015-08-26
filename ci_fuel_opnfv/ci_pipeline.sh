@@ -40,8 +40,18 @@ do_exit () {
 	STATUS="IDLE"
 	put_status
     fi
-    kill $LOGPID
-    echo "Exiting ..."
+
+     if [ ! -z ${LOGPID} ]; then 
+	 kill $LOGPID
+     fi
+     if [ ! -z ${TEMPEST_LOGPID} ]; then 
+	 kill ${TEMPEST_LOGPID}
+     fi
+     if [ ! -z ${VPING_LOGPID} ]; then 
+	 kill ${VPING_LOGPID}
+     fi
+     
+     echo "Exiting ..."
 }
 
 #
@@ -472,13 +482,18 @@ function func_test {
     STATUS="FUNCTEST_TEMPEST"
     put_status
 
+    # Redirect stdout to the log-file
     su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest" ${USER}
-
-    # <FIX> redirect the tempest portion of the log to the tempest result dir
+    touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/result.log > /dev/null
+    tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/result.log &
+    sleep 0.3
+    TEMPEST_LOGPID=$!
 
     # <FIX> Tempest cant run as other than root - root-cause is probably that func test cant install with su ".." $USER!
     #su -c "source credentials/openrc && rally verify start smoke" ${USER}
     source credentials/openrc && rally verify start smoke
+
+    kill ${TEMPEST_LOGPID}
 
     if [ $SMOKE -eq 0 ]; then 
 	echo
@@ -508,9 +523,7 @@ function func_test {
 	su -c "source credentials/openrc && functest/testcases/Controllers/ODL/CI/start_tests.sh" ${USER}
 
 	su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl" ${USER}
-
 	su -c "cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.html ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/." ${USER} 
-
 	su -c "cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.xml ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/." ${USER} 
 
 	echo
@@ -519,12 +532,18 @@ function func_test {
 	STATUS="FUNCTEST_VPING"
 	put_status
 
+	# Redirect stdout to the log-file
 	su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping" ${USER}
-
-	# <FIX> redirect the vPing portion of the log to the vping result dir
+	touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping/result.log > /dev/null
+	tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping/result.log &
+	sleep 0.3
+	VPING_LOGPID=$!
 
 	su -c "cd ${SCRIPT_PATH} && source credentials/openrc && python functest/testcases/vPing/CI/libraries/vPing.py -d functest/" ${USER}
+
+	kill $VPING_LOGPID
     fi
+
     cd $PUSH_PATH
 }
 
@@ -706,12 +725,6 @@ fi
 cd ${SCRIPT_PATH}
 
 # Redirect stdout and stderr to the log-file
-touch test.log > /dev/null
-tail -n 0 -f test.log 2>/dev/null &
-sleep 0.3
-LOGPID=$!
-exec > test.log 2>&1
-
 su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}" ${USER}
 touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > /dev/null
 tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log 2>/dev/null &
