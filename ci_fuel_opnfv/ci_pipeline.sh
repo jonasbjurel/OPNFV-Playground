@@ -287,7 +287,7 @@ function eval_params {
 function check_avail {
 if [[ -e ${SCRIPT_PATH}/ci-status ]] && [[ -z `cat ${SCRIPT_PATH}/ci-status | grep IDLE` ]]; then
     echo "CI-Pipline busy!"
-    RESULT="ERROR - CI-pipeline busy"
+    RESULT="INFO - CI-pipeline busy"
     rc=100
     exit 100
 fi
