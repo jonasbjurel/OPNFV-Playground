@@ -173,11 +173,12 @@ function put_result {
 #
 function put_status {
     PUSH_PATH=`pwd`
- 
+    
+    mkdir -p ${STATUS_FILE_PATH}
     if [ ${STATUS} == "IDLE" ]; then
-	su -c "mkdir -p ${STATUS_FILE_PATH} && echo '${STATUS} $('date')' > ${STATUS_FILE_PATH}/ci-status" ${USER}
+	echo "${STATUS} | $('date')" > ${STATUS_FILE_PATH}/ci-status
     else
-	su -c "${STATUS_FILE_PATH} && echo '${STATUS} $('date') ${BRANCH} ${COMMIT_ID} $VERSION}' > ${STATUS_FILE_PATH}/ci-status" ${USER}
+	echo "${STATUS} | $('date') | ${BRANCH} | ${COMMIT_ID} | ${VERSION}" > ${STATUS_FILE_PATH}/ci-status
     fi
     cd $PUSH_PATH
 }
