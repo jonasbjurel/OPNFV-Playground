@@ -239,7 +239,7 @@ function eval_params {
     fi
 
     if [ $BUILD -eq 0 ]; then
-	if [ $CHANGE_SET_PROVIDED -eq 1] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $BRANCH_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
+	if [ $CHANGE_SET_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $BRANCH_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
 	    echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), a branch (-b ...) or to invalidate the build cache (-I)"
 	    usage
 	    RESULT="ERROR - Faulty script input parameters"
