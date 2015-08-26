@@ -9,24 +9,45 @@ set -e
 # http://www.apache.org/licenses/LICENSE-2.0
 ##############################################################################
 
-trap 'if [ ${rc} -ne 0 ]; then \
-    if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then \
-      echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"; \
-    else \
-      echo "FAILED - see the log for details: ${RESULT_FILE}"; \
-    fi; \
-  fi; \
-  TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME]; \
-  put_result; \
-  if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then \
-     chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
-     chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log; \
-  fi; \
-  echo "result: $rc"; \
-  clean; \
-  STATUS="IDLE"; \
-  put_status; \
-  echo "Exiting ..."; \' EXIT
+############################################################################
+# BEGIN of Exit handlers
+#
+
+trap do_exit SIGINT SIGTERM EXIT
+
+do_exit () {
+    if [ $? -eq 130 ]; then
+	RESULT="INFO: CI-pipeline interrupted"
+    fi
+    if [ ${rc} -ne 0 ]; then
+	if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then 
+	    echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"
+	else
+	    echo "FAILED - see the log for details: ${RESULT_FILE}"
+	fi
+    fi
+    TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME];
+    put_result
+    if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then
+	chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
+	chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
+    fi
+    echo "result: $rc"
+    # Note exit code 100 is a special code for no clean-up, 
+    # eg used when another instance is already running
+     if [ $rc -ne 100 ]; then
+	clean;
+	STATUS="IDLE"
+	put_status
+    fi
+    kill $LOGPID
+    echo "Exiting ..."
+}
+
+#
+# End of Exit handlers
+############################################################################
+
 
 ############################################################################
 # BEGIN of usage description
@@ -152,10 +173,11 @@ function put_result {
 #
 function put_status {
     PUSH_PATH=`pwd`
+ 
     if [ ${STATUS} == "IDLE" ]; then
-	su -c "cd ${SCRIPT_PATH} && echo '${STATUS} $('date')' > ci-status" ${USER}
+	su -c "mkdir -p ${STATUS_FILE_PATH} && echo '${STATUS} $('date')' > ${STATUS_FILE_PATH}/ci-status" ${USER}
     else
-	su -c "cd ${SCRIPT_PATH} && echo '${STATUS} $('date') ${BRANCH} ${COMMIT_ID} $VERSION}' > ci-status" ${USER}
+	su -c "${STATUS_FILE_PATH} && echo '${STATUS} $('date') ${BRANCH} ${COMMIT_ID} $VERSION}' > ${STATUS_FILE_PATH}/ci-status" ${USER}
     fi
     cd $PUSH_PATH
 }
@@ -218,7 +240,7 @@ function eval_params {
     fi
 
     if [ $BUILD -eq 0 ]; then
-	if [ $CHANGE_SET_PROVIDED -eq 1] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $BRANCH_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
+	if [ $CHANGE_SET_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $BRANCH_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
 	    echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), a branch (-b ...) or to invalidate the build cache (-I)"
 	    usage
 	    RESULT="ERROR - Faulty script input parameters"
@@ -258,6 +280,22 @@ function eval_params {
 
 #
 # END Evaluate parameters
+############################################################################
+
+############################################################################
+# Check CI-pipeline availability
+#
+function check_avail {
+if [[ -e ${STATUS_FILE_PATH}/ci-status ]] && [[ -z `cat ${STATUS_FILE_PATH}/ci-status | grep IDLE` ]]; then
+    echo "CI-Pipline busy!"
+    RESULT="INFO - CI-pipeline busy"
+    rc=100
+    exit 100
+fi
+}
+
+#
+# END Check CI-pipeline availability
 ############################################################################
 
 
@@ -554,6 +592,7 @@ BRANCH="master"
 CHANGE_SET=""
 DEA="${SCRIPT_PATH}/config/multinode/dea.yaml"
 DHA="${SCRIPT_PATH}/config/multinode/dha.yaml"
+STATUS_FILE_PATH="/var/run/fuel"
 BUILD=1
 DEPLOY=1
 TEST=1
@@ -583,7 +622,6 @@ rc=1
 ############################################################################
 # Start of main
 #
-
 while getopts "au:b:c:r:BDTi:tIpPh" OPTION
 do
     case $OPTION in
@@ -668,11 +706,22 @@ fi
 cd ${SCRIPT_PATH}
 
 # Redirect stdout and stderr to the log-file
+touch test.log > /dev/null
+tail -n 0 -f test.log 2>/dev/null &
+sleep 0.3
+LOGPID=$!
+exec > test.log 2>&1
+
 su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}" ${USER}
-exec > >(tee ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log)
-exec 2>&1
+touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > /dev/null
+tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log 2>/dev/null &
+sleep 0.3
+LOGPID=$!
+exec > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log 2>&1
 
 eval_params
+
+check_avail
 
 GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/genesis ${CHANGE_SET}"
 GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/genesis"
