@@ -485,6 +485,7 @@ function func_test {
     # Redirect stdout to the log-file
     su -c "mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest" ${USER}
     touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/result.log > /dev/null
+    echo "================IM HERE============"
     tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/result.log &
     sleep 0.3
     TEMPEST_LOGPID=$!
