@@ -144,7 +144,6 @@ function fetch_config() {
     ADMIN_OS_USR="admin"
     ADMIN_OS_PASSWD=$dea_settings_editable_access_password_value
     
-    CTRL_FQDN="node-1.$dea_fuel_DNS_DOMAIN"
     cd $PUSH_PATH
 }
 
@@ -434,7 +433,7 @@ function func_test {
     echo "Get stack config...."
     fetch_config
     cd ${SCRIPT_PATH}/credentials
-    su -c "./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD} ${CTRL_FQDN}" ${USER}
+    su -c "./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD}" ${USER}
 
     # modify openrc with public AUTH access end point
     if [ ! -e openrc ]; then
