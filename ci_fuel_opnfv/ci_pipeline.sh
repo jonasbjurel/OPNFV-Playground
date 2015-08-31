@@ -129,28 +129,6 @@ function parse_yaml() {
 ############################################################################
 
 
-############################################################################
-# BEGIN of password storage verification
-#
-function verify_pwstore() {
-    local PWFILE
-    PWFILE=$HOME/.cipassword
-
-    if [ "$(whoami)" != "root" ]; then
-        if [ ! -f $PWFILE ]; then
-            echo "Error: No $PWFILE - please place your password in this file"
-            exit 1
-        fi
-        if [ $(find $PWFILE ! -perm /g+r ! -perm /o+r | wc -l) -eq 0 ]; then
-            echo "Error: $PWFILE is readable by group and/or owner."
-            echo "Make sure to: chmod g-rwx,o-rwx $PWFILE"
-            exit 1
-        fi
-    fi
-}
-
-# END of password storage verification
-############################################################################
 
 
 ############################################################################
@@ -657,9 +635,6 @@ rc=1
 # Start of main
 #
 
-
-# Make sure that user's password is available
-verify_pwstore
 
 # Set less restrictive umask so that files are accessible by libvirt
 umask 0002

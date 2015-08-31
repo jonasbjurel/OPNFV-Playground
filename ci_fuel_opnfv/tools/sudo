@@ -8,6 +8,35 @@
 # which accompanies this distribution, and is available at
 # http://www.apache.org/licenses/LICENSE-2.0
 ##############################################################################
+
+############################################################################
+# BEGIN of password storage verification
+#
+function verify_pwstore() {
+    local PWFILE
+    PWFILE=$HOME/.cipassword
+
+    if [ $(find $PWFILE ! -perm /g+r ! -perm /o+r | wc -l) -eq 0 ]; then
+        echo "Error: $PWFILE is readable by group and/or owner." >&2
+        echo "Make sure to: chmod g-rwx,o-rwx $PWFILE" >&2
+        exit 1
+    fi
+}
+
+# END of password storage verification
+############################################################################
+
+
+
+
+
 umask 0002
 PWFILE=$HOME/.cipassword
-cat $PWFILE | /usr/bin/sudo -S $@
+if [ -f $PWFILE ]; then
+    verify_pwstore
+    echo "sudo will run (with pwfile): $@" >&2
+    cat $PWFILE | /usr/bin/sudo -S $@
+else
+    echo "sudo will run (without pwfile): $@" >&2
+    /usr/bin/sudo $@
+fi
