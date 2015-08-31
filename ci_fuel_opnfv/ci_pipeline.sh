@@ -25,7 +25,7 @@ do_exit () {
         fi
     fi
     TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME];
-    put_result
+    put_result;
     if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then
         chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
         chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
@@ -55,7 +55,6 @@ do_exit () {
 #                                                                                                                       
 # End of Exit handlers                                                                                                  
 ############################################################################ 
-
 
 
 ############################################################################
@@ -535,8 +534,9 @@ function func_test {
         functest/testcases/Controllers/ODL/CI/start_tests.sh
 
         mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl
-	    cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.html ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/.
-	    cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.xml ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/.
+
+        cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.html ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/.
+        cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.xml ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/.
 
         echo
         echo "========== Runing vPING test =========="
@@ -552,8 +552,10 @@ function func_test {
         sleep 0.3
         VPING_LOGPID=$!
 
-        cd ${SCRIPT_PATH} && source credentials/openrc && python functest/testcases/vPing/CI/libraries/vPing.py \
--d functest/
+        pushd ${SCRIPT_PATH}
+        source credentials/openrc
+        python functest/testcases/vPing/CI/libraries/vPing.py -d functest/
+        popd
 
         kill $VPING_LOGPID
     fi
