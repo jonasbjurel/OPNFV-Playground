@@ -243,8 +243,8 @@ function eval_params {
     fi
 
     if [ $BUILD -eq 0 ]; then
-        if [ $CHANGE_SET_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $BRANCH_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
-            echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), a branch (-b ...) or to invalidate the build cache (-I)"
+        if [ $CHANGE_SET_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
+            echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), or to invalidate the build cache (-I)"
             usage
             RESULT="ERROR - Faulty script input parameters"
             exit 1
@@ -392,12 +392,16 @@ function deploy {
 
     # <FIX> Such that virt-manager spawns
     virt-manager &
+    echo cd ${SCRIPT_PATH}
     cd ${SCRIPT_PATH}
+    echo "Repo path is ${REPO_PATH}"
 
     if [ $BUILD -eq 1 ]; then
-       sudo ./ci_sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO} ${DEA} ${DHA}
+       echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO} ${DEA} ${DHA}
+       sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO} ${DEA} ${DHA}
     else
-       sudo -S ./ci_sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${LOCAL_ISO} ${DEA} ${DHA}
+       echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${LOCAL_ISO} ${DEA} ${DHA}
+       sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${LOCAL_ISO} ${DEA} ${DHA}
     fi
     cd $PUSH_PATH
 }
@@ -712,7 +716,7 @@ do
 done
 
 LF_USER=$(echo $@ | cut -d ' ' -f ${OPTIND})
-if [ $BUILD -eq 0 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ]; then 
+if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then 
     BRANCH="NIL"
     COMMIT_ID="NIL"
     ISO_META="NIL"
@@ -786,6 +790,9 @@ fi
 
 if [ $DEPLOY -eq 1 ]; then
     time0=`date +%s`
+    if [ -z "$REPO_PATH" ]; then
+        clone_repo
+    fi
     deploy
     time1=`date +%s`
     DEPLOY_TIME=$[(time1-time0)/60]
