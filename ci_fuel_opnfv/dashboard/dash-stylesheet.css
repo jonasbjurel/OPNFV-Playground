@@ -1,0 +1,122 @@
+/*##############################################################################
+# Copyright (c) 2015 Jonas Bjurel and others.
+# jonasbjurel@hotmail.com
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Apache License, Version 2.0
+# which accompanies this distribution, and is available at
+# http://www.apache.org/licenses/LICENSE-2.0
+##############################################################################*/
+@import "compass/css3";
+
+.wrapper {
+  display: -webkit-box;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;  
+  
+  -webkit-flex-flow: row wrap;
+  flex-flow: row wrap;
+  
+  font-weight: bold;
+  text-align: center;
+}
+
+.wrapper > * {
+  padding: 10px;
+}
+
+.header {
+  background: White;
+  width:95%;
+  border: 12px solid green;
+  border-radius: 10px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.ci-status {
+  text-align: left;
+  background: white;
+  position: left;
+  width: 45%;
+  height: 220px;
+  border: 6px solid grey;
+  border-radius: 10px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.vm-status {
+  text-align: left;
+  background: white;
+  position: right;
+  margin: 3%;
+  width: 45%;
+  height: 220px;
+  border: 6px solid grey;
+  border-radius: 10px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.ci-history {
+  text-align: left;
+  background: white;
+  display: inline-block;
+  position: relative;
+  float: left;
+  width: 96%;
+  height: 200px;
+  border: 6px solid grey;
+  border-radius: 10px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.ci-control {
+  text-align: left;
+  background: white;
+  display: inline-block;
+  position: relative;
+  float: left;
+  width: 300px;
+  height: 550px;
+  border: 6px solid grey;
+  border-radius: 10px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.ci-console {
+  text-align: left;
+  background: white;
+  display: inline-block;
+  position: relative;
+  float: left;
+  margin: 2%;
+  width: calc(92% - 300px);         /* standards-based answer for IE9+, FF16+ */
+  width: -moz-calc(92% - 300px);    /* support for FF4 - FF15                 */
+  width: -webkit-calc(92% - 300px); /* support for Chrome19+ and Safari6+     */
+  height: 550px;
+  border: 6px solid grey;
+  border-radius: 10px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+@media all and (min-width: 600px) {
+  .aside { flex: 1 auto; }
+}
+
+@media all and (min-width: 800px) {
+  .ci-status { order: 1;}
+  .vm-status { order: 2;}
+  .ci-history { order: 3;}
+  .ci-control { order: 4;}
+  .ci-console { order: 5;}
+}
+
+body {
+  padding: 2em; 
+}
