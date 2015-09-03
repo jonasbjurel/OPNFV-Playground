@@ -200,8 +200,8 @@ function put_status {
 function eval_params {
 
     if [ $CHANGE_SET_PROVIDED -eq 1 ]; then
-        if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
-            echo "Can not operate on the change-set: -c $CHANGE_SET while working from the local repository -r $REPO_PATH"
+        if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
+            echo "Can not operate on the change-set: -c $CHANGE_SET while working from local path -r $REPO_PATH"
             usage
             RESULT="ERROR - Faulty script input parameters"
             exit 1
@@ -239,7 +239,8 @@ function eval_params {
     fi
 
     if [ $BUILD -eq 0 ]; then
-        if [ $CHANGE_SET_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
+        if [ $CHANGE_SET_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $LOCAL_PATH_PROVIDED -eq 1 ] || \
+            [ $INVALIDATE_CACHE -eq 1 ]; then
             echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), or to invalidate the build cache (-I)"
             usage
             RESULT="ERROR - Faulty script input parameters"
@@ -293,16 +294,13 @@ function clone_repo {
     put_status
 
     cd ${SCRIPT_PATH}
-    if [ ${LOCAL_REPO_PROVIDED} -eq 0 ]; then
+    if [ ${LOCAL_PATH_PROVIDED} -eq 0 ]; then
         if [ $CHANGE_SET_PROVIDED -eq 0 ]; then
             REPO_PATH=${SCRIPT_PATH}/"genesis"
         else
             REPO_PATH=${SCRIPT_PATH}/${CHANGE_SET}
         fi
-    fi
-    BUILD_ARTIFACT_PATH="${REPO_PATH}/fuel/build_result"
 
-    if [ -${LOCAL_REPO_PROVIDED} -eq 0 ]; then
         rm -rf ${REPO_PATH}
         if [[ -z $LF_USER ]]; then
             echo
@@ -318,15 +316,22 @@ function clone_repo {
             echo "========= Checking out branch/tag ${BRANCH} ========="
             pushd ${REPO_PATH}
             git checkout ${BRANCH}
-            popd
         else
             echo "========== Pulling the patch ${CHANGE_SET} =========="
             pushd ${REPO_PATH}
             git pull ${GIT_SRC}
-            popd
         fi
         COMMIT_ID=`git rev-parse HEAD`
+        popd
+    else
+        # Local path provided
+        REPO_PATH=${LOCAL_PATH}
+        COMMIT_ID="NIL"
     fi
+
+    BUILD_ARTIFACT_PATH="${REPO_PATH}/fuel/build_result"
+    echo "Commit ID is ${COMMIT_ID}"
+
     cd $PUSH_PATH
 }
 
@@ -355,16 +360,23 @@ function build {
 
     if [ $INVALIDATE_CACHE -ne 1 ]; then
         pushd ${REPO_PATH}/fuel/ci
+        echo ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
         ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
         popd
     else
         pushd ${REPO_PATH}/fuel/ci
+        echo ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} -f P ${BUILD_ARTIFACT_PATH}
         ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} -f P ${BUILD_ARTIFACT_PATH}
         popd
     fi
 
-    cp ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/.
-    cp ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/.
+    echo mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}
+    mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}
+    echo cp ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    cp ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    echo cp ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    cp ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+
     cd $PUSH_PATH
 }
 
@@ -612,6 +624,7 @@ SMOKE=0
 LOCAL_ISO_PROVIDED=0
 CHANGE_SET_PROVIDED=0
 LOCAL_REPO_PROVIDED=0
+LOCAL_PATH_PROVIDED=0
 BRANCH_PROVIDED=0
 USER_PROVIDED=0
 INVALIDATE_CACHE=0
@@ -645,7 +658,7 @@ export PATH=${SCRIPT_PATH}/tools:$PATH
 # Enable the exit trap
 trap do_exit SIGINT SIGTERM EXIT
 
-while getopts "au:b:c:r:BDTi:tIpPh" OPTION
+while getopts "au:b:c:r:l:BDTi:tIpPh" OPTION
 do
     case $OPTION in
         h)
@@ -665,6 +678,7 @@ do
         b)
             BRANCH=${OPTARG}
             BRANCH_PROVIDED=1
+            echo "Branch set to $BRANCH"
             ;;
 
         c)
@@ -672,6 +686,10 @@ do
             CHANGE_SET_PROVIDED=1
             ;;
 
+        l)
+            LOCAL_PATH=${OPTARG}
+            LOCAL_PATH_PROVIDED=1
+            ;;
         r)
             REPO_PATH=${OPTARG}
             LOCAL_REPO_PROVIDED=1
@@ -719,11 +737,9 @@ do
 done
 
 LF_USER=$(echo $@ | cut -d ' ' -f ${OPTIND})
-if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
+if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
     BRANCH="NIL"
     COMMIT_ID="NIL"
-    ISO_META="NIL"
-    ISO="NIL"
 fi
 
 cd ${SCRIPT_PATH}
@@ -749,10 +765,15 @@ echo "Branch: ${BRANCH}"
 
 echo "Version: ${VERSION}"
 echo "Change-set: ${CHANGE_SET}"
-if [[ -z $LF_USER ]]; then
-    METHOD="https://"
+
+if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
+    METHOD="Local directory ${LOCAL_PATH}"
 else
-    METHOD="ssh://"
+    if [[ -z $LF_USER ]]; then
+        METHOD="https://"
+    else
+        METHOD="ssh://"
+    fi
 fi
 
 echo "Repository clone method: $METHOD"
