@@ -9,9 +9,9 @@ set -e
 # http://www.apache.org/licenses/LICENSE-2.0
 ##############################################################################
 
-############################################################################                                            
-# BEGIN of Exit handlers                                                                                                
-#                                                                                                                       
+############################################################################
+# BEGIN of Exit handlers
+#
 
 do_exit () {
     if [ $? -eq 130 ]; then
@@ -31,9 +31,9 @@ do_exit () {
         chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
     fi
     echo "result: $rc"
-    # Note exit code 100 is a special code for no clean-up,                                                             
-    # eg used when another instance is already running                                                                  
-     if [ $rc -ne 100 ]; then
+    # Note exit code 100 is a special code for no clean-up,
+    # eg used when another instance is already running
+    if [ $rc -ne 100 ]; then
         clean;
         STATUS="IDLE"
         put_status
@@ -48,13 +48,13 @@ do_exit () {
      if [ ! -z ${VPING_LOGPID} ]; then 
          kill ${VPING_LOGPID}
      fi
-     
+
      echo "Exiting ..."
 }
 
-#                                                                                                                       
-# End of Exit handlers                                                                                                  
-############################################################################ 
+#
+# End of Exit handlers
+############################################################################
 
 
 ############################################################################
@@ -70,7 +70,7 @@ $0 - Simple Fuel@OPNFV CI Pipeline:
 3) Deploys a Fuel@OPNFV using local nested KVM virtualization
 4) Performs basic health tests
 5) Perfoms ordinary OPNFV CI pipeline functional tests
- 
+
 usage: $0 [-h] [-a] [-u local user] [-r local repo path] [-b branch | -c change-set ] [-BDT] [-t] [-i Iso image] [-p | -P] [-I] [Linux foundation user]
 
 -h Prints this message.
@@ -79,8 +79,8 @@ usage: $0 [-h] [-a] [-u local user] [-r local repo path] [-b branch | -c change-
    should be used for non priviledged bash actions.
 -r Path to a local repository rather than using standard Fuel@OPNFV repo, this option can not be combined with the -c, -B, or -I options.
 -b Branch/commit Id to use, this option can not be combined with -B
--c Changeset to use, this option requires a "Linux foundation user" and can not be combined with the -B or -r options. 
--I Invalidate cache, invalidates local cache and builds all from upstream, cannot be accompanioned with the -B option. 
+-c Changeset to use, this option requires a "Linux foundation user" and can not be combined with the -B or -r options.
+-I Invalidate cache, invalidates local cache and builds all from upstream, cannot be accompanioned with the -B option.
 -B Skip build stage, this option cannot be combined with the -r, -b, -c or -D options.
 -D Skip deploy stage, this option must either be accompanioned with the -i <iso> option or else it can not be accompanioned with the -B option
 -T Skip functest stage
@@ -219,7 +219,7 @@ function eval_params {
             usage
             RESULT="ERROR - No LF user provided"
             exit 1$CHANGE_SET_PROVIDED -eq 0
-        fi 
+        fi
     fi
 
     if [ $BUILD -eq 1 ]; then
@@ -229,7 +229,7 @@ function eval_params {
             RESULT="ERROR - Faulty script input parameters"
             exit 1
         fi
-        
+
         if [ $LOCAL_ISO_PROVIDED -eq 1 ]; then
             echo "Since build has not been disabled (-B) it makes no sense to provide a local iso (-i $LOCAL_ISO)"
             usage
@@ -273,7 +273,7 @@ function eval_params {
 
     if [[ -z $LF_USER ]]; then
         echo "Since no LinuxFoundation user is provided, the repositories will be pulled using https:// methods (as aposed to git:// or ssh://)"
-    fi 
+    fi
 
 }
 
@@ -483,7 +483,7 @@ function func_test {
 
     kill ${TEMPEST_LOGPID}
 
-    if [ $SMOKE -eq 0 ]; then 
+    if [ $SMOKE -eq 0 ]; then
         echo
         echo "========== Running Rally tests =========="
         RESULT="ERROR - OPNV Functional Rally test failed"
@@ -522,7 +522,7 @@ function func_test {
         STATUS="FUNCTEST_VPING"
         put_status
 
-        # Redirect stdout to the log-file                                                                               
+        # Redirect stdout to the log-file
         mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping
         touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping/result.log > /dev/null
         tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}\
@@ -546,7 +546,7 @@ function func_test {
 ############################################################################
 
 ############################################################################
-# Start clean CI engine
+# Begin clean CI engine
 #
 
 function clean {
@@ -558,7 +558,7 @@ function clean {
         echo "========== Cleaning up environment =========="
         STATUS="CLEANING"
         put_status
- 
+
         cd ${SCRIPT_PATH}
         # <Fix> Such that clean up can use su
         #su -c "source credentials/openrc && python functest/testcases/config_functest.py -f -d functest/ clean" ${USER}
@@ -583,7 +583,7 @@ cd $PUSH_PATH
 }
 
 #
-# Endreport CI status 
+# Begin clean CI engine
 ############################################################################
 
 ############################################################################
@@ -719,7 +719,7 @@ do
 done
 
 LF_USER=$(echo $@ | cut -d ' ' -f ${OPTIND})
-if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then 
+if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
     BRANCH="NIL"
     COMMIT_ID="NIL"
     ISO_META="NIL"
