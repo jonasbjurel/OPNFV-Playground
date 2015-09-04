@@ -318,14 +318,20 @@ function clone_repo {
         fi
 
         rm -rf ${REPO_PATH}
-        if [[ -z $LF_USER ]]; then
+        if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
             echo
-            echo "========== Cloning repository ${GIT_HTTPS_SRC} =========="
-            git clone ${GIT_HTTPS_SRC}
+            echo "========== Cloning local ${LOCAL_REPO} =========="
+            git clone ${LOCAL_REPO}
         else
-            echo
-            echo "========== Cloning repository ${GIT_SRC} =========="
-            git clone ${GIT_SRC}
+            if [[ -z $LF_USER ]]; then
+                echo
+                echo "========== Cloning repository ${GIT_HTTPS_SRC} =========="
+                git clone ${GIT_HTTPS_SRC}
+            else
+                echo
+                echo "========== Cloning repository ${GIT_SRC} =========="
+                git clone ${GIT_SRC}
+            fi
         fi
 
         if [ $CHANGE_SET_PROVIDED -eq 0 ]; then
@@ -708,7 +714,7 @@ do
             LOCAL_PATH_PROVIDED=1
             ;;
         r)
-            REPO_PATH=${OPTARG}
+            LOCAL_REPO=${OPTARG}
             LOCAL_REPO_PROVIDED=1
             ;;
 
