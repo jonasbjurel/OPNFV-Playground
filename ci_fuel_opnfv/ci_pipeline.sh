@@ -15,7 +15,7 @@ set -e
 
 do_exit () {
     if [ $? -eq 130 ]; then
-        RESULT="INFO: CI-pipeline interrupted"
+        RESULT="INFO CI-pipeline interrupted"
     fi
     if [ ${rc} -ne 0 ]; then
         if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then 
@@ -34,6 +34,7 @@ do_exit () {
     # Note exit code 100 is a special code for no clean-up,
     # eg used when another instance is already running
     if [ $rc -ne 100 ]; then
+        cd $SCRIPT_PATH
         clean;
         STATUS="IDLE"
         put_status
@@ -152,7 +153,6 @@ function fetch_config() {
     ADMIN_OS_USR="admin"
     ADMIN_OS_PASSWD=$dea_settings_editable_access_password_value
 
-    CTRL_FQDN="node-1.$dea_fuel_DNS_DOMAIN"
     cd $PUSH_PATH
 }
 
@@ -165,7 +165,7 @@ function fetch_config() {
 #
 function put_result {
     PUSH_PATH=`pwd`
-    LOG_MSG="Result: ${RESULT} \| Build Id: ${VERSION} \| Branch: ${BRANCH} \| Commit ID: ${COMMIT_ID} \| Total ci pipeline time: ${TOTAL_TIME} min \| Total build time: ${BUILD_TIME} min \| Total deployment time: ${DEPLOY_TIME} \| Total functest time: ${TEST_TIME}"
+    LOG_MSG="Result: ${RESULT} | Build Id: ${VERSION} | Branch: ${BRANCH} | Commit ID: ${COMMIT_ID} | Total ci pipeline time: ${TOTAL_TIME} min | Total build time: ${BUILD_TIME} min | Total deployment time: ${DEPLOY_TIME} | Total functest time: ${TEST_TIME}"
     echo $LOG_MSG >> ${SCRIPT_PATH}/${RESULT_FILE}
     if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
         echo $LOG_MSG > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}
@@ -181,10 +181,11 @@ function put_result {
 #
 function put_status {
     PUSH_PATH=`pwd`
+    sudo mkdir -p ${STATUS_FILE_PATH}
     if [ ${STATUS} == "IDLE" ]; then
-        echo "${STATUS} $('date')" > ${SCRIPT_PATH}/ci-status
+        sudo sh -c "echo \"${STATUS} | $('date')\" > ${STATUS_FILE_PATH}/ci-status"
     else
-        echo "${STATUS} $('date') ${BRANCH} ${COMMIT_ID} ${VERSION}" > ${SCRIPT_PATH}/ci-status
+        sudo sh -c "sudo echo \"${STATUS} | $('date') | ${BRANCH} | ${COMMIT_ID} | ${VERSION}\" > ${STATUS_FILE_PATH}/ci-status"
     fi
     cd $PUSH_PATH
 }
@@ -192,7 +193,6 @@ function put_status {
 #
 # END report CI status
 ############################################################################
-
 
 ############################################################################
 # Evaluate parameters
@@ -208,6 +208,7 @@ function eval_params {
         fi
 
         if [ $BUILD -eq 0 ]; then
+            echo Im here
             echo "Providing a changeset: -c $CHANGE_SET while providing the -B option (skip build) does not make sense"
             usage
             RESULT="ERROR - Faulty script input parameters"
@@ -282,6 +283,21 @@ function eval_params {
 # END Evaluate parameters
 ############################################################################
 
+############################################################################
+# Check CI-pipeline availability
+#
+function check_avail {
+if [[ -e ${STATUS_FILE_PATH}/ci-status ]] && [[ -z `cat ${STATUS_FILE_PATH}/ci-status | grep IDLE` ]]; then
+    echo "CI-Pipline busy!"
+    RESULT="INFO - CI-pipeline busy"
+    rc=100
+    exit 100
+fi
+}
+
+#
+# END Check CI-pipeline availability
+############################################################################
 
 ############################################################################
 # BEGIN of clone repo
@@ -441,8 +457,8 @@ function func_test {
     echo "Get stack config...."
     fetch_config
     cd ${SCRIPT_PATH}/credentials
-    echo ./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD} ${CTRL_FQDN}
-    ./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD} ${CTRL_FQDN}
+    echo ./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD}
+    ./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD}
 
     # modify openrc with public AUTH access end point
     if [ ! -e openrc ]; then
@@ -617,6 +633,7 @@ BRANCH="master"
 CHANGE_SET=""
 DEA="${SCRIPT_PATH}/config/multinode/dea.yaml"
 DHA="${SCRIPT_PATH}/config/multinode/dha.yaml"
+STATUS_FILE_PATH="/var/run/fuel"
 BUILD=1
 DEPLOY=1
 TEST=1
@@ -753,6 +770,8 @@ LOGPID=$!
 exec > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log 2>&1
 
 eval_params
+
+check_avail
 
 GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/genesis ${CHANGE_SET}"
 GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/genesis"
