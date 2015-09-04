@@ -189,6 +189,8 @@ function put_status {
     fi
     cd $PUSH_PATH
 }
+
+#
 # END report CI status
 ############################################################################
 
