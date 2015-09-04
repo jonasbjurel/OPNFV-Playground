@@ -35,8 +35,8 @@ PWFILE=$HOME/.cipassword
 if [ -f $PWFILE ]; then
     verify_pwstore
     echo "sudo will run (with pwfile): $@" >&2
-    cat $PWFILE | /usr/bin/sudo -S $@
+    cat $PWFILE | /usr/bin/sudo -S "$@"
 else
     echo "sudo will run (without pwfile): $@" >&2
-    /usr/bin/sudo $@
+    /usr/bin/sudo "$@"
 fi
