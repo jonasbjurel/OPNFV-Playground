@@ -13,11 +13,11 @@
   display: -moz-box;
   display: -ms-flexbox;
   display: -webkit-flex;
-  display: flex;  
-  
+  display: flex;
+
   -webkit-flex-flow: row wrap;
   flex-flow: row wrap;
-  
+
   font-weight: bold;
   text-align: center;
 }
@@ -81,7 +81,7 @@
   position: relative;
   float: left;
   width: 300px;
-  height: 550px;
+  height: 600px;
   border: 6px solid grey;
   border-radius: 10px;
   margin-top: 15px;
@@ -98,7 +98,7 @@
   width: calc(92% - 300px);         /* standards-based answer for IE9+, FF16+ */
   width: -moz-calc(92% - 300px);    /* support for FF4 - FF15                 */
   width: -webkit-calc(92% - 300px); /* support for Chrome19+ and Safari6+     */
-  height: 550px;
+  height: 600px;
   border: 6px solid grey;
   border-radius: 10px;
   margin-top: 15px;
@@ -118,5 +118,5 @@
 }
 
 body {
-  padding: 2em; 
+  padding: 2em;
 }

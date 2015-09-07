@@ -10,31 +10,50 @@
   <head>
     <title> OPNFV CI console output </title>
 <!--    <meta http-equiv="refresh" content="2" /> -->
-    <meta http-equiv="refresh" content="5" />  
+    <meta http-equiv="refresh" content="5" />
   </head>
   <body>
     <p>
+
+<script type="text/javascript">
+window.onload = pageScroll; function pageScroll() {
+window.scrollBy(0,1000);
+scrolldelay = setTimeout('pageScroll()', 300);
+/* Increase this # to slow down, decrease to speed up scrolling */
+}
+
+</script>
+
       <?php
         header( 'Content-type: text/html; charset=utf-8' );
-
+      include 'get_metadata.php';
         function follow($file)
         {
-          $handle = popen("tail -f $file 2>&1", 'r');
-          while(!feof($handle)) {
-            $buffer = fgets($handle);
-            echo "$buffer\n";
-            flush();
-            ob_flush();
-          }
-          pclose($handle);
+           $handle = popen("tail -f -n +0 $file 2>&1", 'r');
+           $start_time = time();
+
+           while((time() - $start_time) < 5) {
+              //stream_set_timeout($handle, 0);
+              stream_set_blocking($handle, false);
+              $buffer = fgets($handle);
+              if ($buffer != false)
+                 echo "$buffer\n";
+              else
+                 sleep(1);
+
+              flush();
+              ob_flush();
+           }
+           pclose($handle);
         }
 
 
-        $config_file="config.yaml";
+        $config_file="../config.yaml";
         $config=yaml_parse_file($config_file);
         $repo_path=$config["ci_repo_path"];
         $status_file="/var/run/fuel/ci-status";
         $ci_status=get_metadata($status_file, $repo_path);
+
         echo "<pre>";
         echo "<b>OPNFV CI-console:</b> ";
         echo date('l jS \of F Y h:i:s A');

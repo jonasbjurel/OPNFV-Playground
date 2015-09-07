@@ -14,9 +14,9 @@
   </head>
   <body>
     <p>
-       <?php 
+       <?php
          function show_status($ci_status, $icon, $font_color) {
-	    echo '<img style="vertical-align:middle" src="',$icon,'" height="100" width="100">';
+            echo '<img style="vertical-align:middle" src="',$icon,'" height="100" width="100">';
             echo '<font size="4" color="',$font_color,'"><b>    ',$ci_status['status'],'</b> since: ',$ci_status['since'],'</font>';
             if ($ci_status["status"] != "IDLE") {
                echo "</br></br>";
@@ -45,18 +45,18 @@
                echo '<td><font size="2">',$ci_status['commit_id'],'</font></td>';
                echo "<td></td>";
                echo '<td><font size="2"> <a href="file://',$ci_status['log'],'">Link</a></font></td>';
-               echo "<td></td>"; 
-               echo "<td></td>"; 
+               echo "<td></td>";
+               echo "<td></td>";
                echo "</tr>";
                echo "</table>";
-            } 
+            }
          }
 
          $config_file="config.yaml";
          $config=yaml_parse_file($config_file);
          $repo_path=$config["ci_repo_path"];
          $status_file="/var/run/fuel/ci-status";
-        
+
          $ci_status=get_metadata($status_file, $repo_path);
 
          switch ($ci_status["status"]) {
@@ -71,7 +71,7 @@
             case "BUILDING":
                show_status($ci_status,"images/build.png","green");
             break;
-       
+
             case "DEPLOYING":
                show_status($ci_status,"images/deploy.png","orange");
             break;

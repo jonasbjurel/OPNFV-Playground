@@ -15,6 +15,7 @@
   </head>
 
   <body>
+
     <?php
       include 'php/get_metadata.php';
     ?>
@@ -38,7 +39,7 @@
          <?php
            include('php/status.php');
          ?>
-       </p>  
+       </p>
      </article>
 
      <article class="vm-status">
@@ -47,7 +48,7 @@
          <?php
            include('php/vm-status.php');
          ?>
-       </p>  
+       </p>
      </article>
 
      <article class="ci-history">
@@ -56,7 +57,7 @@
          <?php
            include('php/history.php');
          ?>
-       </p>  
+       </p>
      </article>
 
      <article class="ci-control">
@@ -65,16 +66,19 @@
            <?php
              include('php/control.php');
            ?>
-         </p>  
+         </p>
        </article>
 
        <article class="ci-console">
          <p>
            CI-Console:
+           </br>
+           </br>
            <?php
-             include('php/console.php');
+              echo  '<iframe src="php/console.php" width="1000" height="520" scrolling="auto">';
+              echo  '</iframe>';
            ?>
-         </p>  
+         </p>
        </article>
 
      </div>

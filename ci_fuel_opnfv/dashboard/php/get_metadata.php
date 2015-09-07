@@ -6,7 +6,7 @@
 <!--# which accompanies this distribution, and is available at               -->
 <!--# http://www.apache.org/licenses/LICENSE-2.0                             -->
 <!--#########################################################################-->
-<?php 
+<?php
   function get_metadata($status_file, $repo_path) {
     $status_str = file_get_contents($status_file, FILE_USE_INCLUDE_PATH);
     list($status, $since) = split('[|]', $status_str);

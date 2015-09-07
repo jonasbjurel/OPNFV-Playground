@@ -14,7 +14,7 @@
   </head>
   <body>
     <p>
-      <?php 
+      <?php
          $config_file="config.yaml";
          $config=yaml_parse_file($config_file);
          $repo_path=$config["ci_repo_path"];
