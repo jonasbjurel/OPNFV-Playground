@@ -101,6 +101,7 @@ if [ $ACCEPT != "Y" ]; then
     exit 1
 fi
 
+sudo apt-get update
 sudo apt-get install $APT_PKG
 sudo pip install $PIP_PKG
 pip install --upgrade oslo.config
