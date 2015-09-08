@@ -628,6 +628,7 @@ SCRIPT=$(readlink -f $0)
 SCRIPT_PATH=`dirname $SCRIPT`
 HOME_SUFIX=${SCRIPT_PATH##/home/}
 USER=${HOME_SUFIX%%/*}
+export HOME="/home/$USER"
 BUILD_CACHE="${SCRIPT_PATH}/cache"
 BUILD_CACHE_URI="file://${BUILD_CACHE}"
 BUILD_ARTIFACT_STORE="artifact"
@@ -670,7 +671,6 @@ rc=1
 ############################################################################
 # Start of main
 #
-
 
 # Set less restrictive umask so that files are accessible by libvirt
 umask 0002
