@@ -14,7 +14,7 @@ umask 0002
 SCRIPT_PATH=`cd $(dirname $0); pwd`
 USER=`/usr/bin/logname`
 
-APT_PKG="git make curl libvirt-bin libpq-dev qemu-kvm qemu-system tightvncserver virt-manager sshpass fuseiso genisoimage blackbox xterm python-pip python-git python-dev python-oslo.config python-pip python-dev libffi-dev libxml2-dev libxslt1-dev libffi-dev libxml2-dev libxslt1-dev expect curli python-netaddr"
+APT_PKG="git make curl libvirt-bin libpq-dev qemu-kvm qemu-system tightvncserver virt-manager sshpass fuseiso genisoimage blackbox xterm python-pip python-git python-dev python-oslo.config python-pip python-dev libffi-dev libxml2-dev libxslt1-dev libffi-dev libxml2-dev libxslt1-dev expect curl python-netaddr"
 PIP_PKG="GitPython pyyaml netaddr paramiko lxml scp python-novaclient python-neutronclient python-glanceclient python-keystoneclient debtcollector netifaces"
 
 sudo apt-get update
@@ -30,7 +30,7 @@ if [[ -z `dpkg -s lsb-core | grep "Status: install ok installed"` ]]; then
   echo "Do you want to install it now?"
   echo "(Y/n)"
   read ACCEPT
-  if [ $ACCEPT != "Y" ]; then
+  if [ "$ACCEPT" != "Y" ]; then
       exit 1
   fi
   sudo apt-get install lsb-core
@@ -77,7 +77,7 @@ echo
 echo "DO YOU AGREE?"
 echo "(Y/n)"
 read ACCEPT
-if [ $ACCEPT != "Y" ]; then
+if [ "$ACCEPT" != "Y" ]; then
     echo "Fine you may still try to install needed packages manually, these are the packages we reccomend:"
     echo "APT pakages:"
     echo "$APT_PKG"
