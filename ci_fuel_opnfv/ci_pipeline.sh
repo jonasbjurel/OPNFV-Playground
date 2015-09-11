@@ -98,6 +98,7 @@ $0 -b master -DT - (Only builds master)
 $0 -T - (Only tests an existing seployment)
 $0 -BDT -P (Purges all except the installation)
 
+NOTE: THIS SCRIPT MAY NOT BE RAN AS ROOT
 EOF
     cd $PUSH_PATH
 }
@@ -628,7 +629,11 @@ SCRIPT=$(readlink -f $0)
 SCRIPT_PATH=`dirname $SCRIPT`
 HOME_SUFIX=${SCRIPT_PATH##/home/}
 USER=${HOME_SUFIX%%/*}
-export HOME="/home/$USER"
+
+if [ -z $HOME ]; then
+   export HOME="/home/$USER"
+fi
+
 BUILD_CACHE="${SCRIPT_PATH}/cache"
 BUILD_CACHE_URI="file://${BUILD_CACHE}"
 BUILD_ARTIFACT_STORE="artifact"
@@ -680,6 +685,12 @@ export PATH=${SCRIPT_PATH}/tools:$PATH
 
 # Enable the exit trap
 trap do_exit SIGINT SIGTERM EXIT
+
+if [ "$(id -u)" == "0" ]; then
+   echo "This script MUST NOT be run as root" 1>&2
+   usage
+   exit 1
+fi
 
 while getopts "au:b:c:r:l:BDTi:tIpPh" OPTION
 do
