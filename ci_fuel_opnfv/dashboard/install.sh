@@ -62,7 +62,7 @@ echo
 echo "DO YOU AGREE?"
 echo "(Y/n)"
 read ACCEPT
-if [ $ACCEPT != "Y" ]; then
+if [ "$ACCEPT" != "Y" ]; then
     echo "Fine you may still try to install needed packages manually, these are the packages we reccomend:"
     echo "APT pakages:"
     echo "$APT_PKG"
@@ -89,8 +89,8 @@ sudo apt-get update
 sudo apt-get install $APT_PKG
 sudo pecl install $PHP_PKG
 
-sudo adduser ${USER} www-data
-sudo adduser www-data libvirtd
+sudo adduser -G www-data ${USER}
+sudo adduser -G libvirtd www-data
 
 sudo service apache2 restart
 
