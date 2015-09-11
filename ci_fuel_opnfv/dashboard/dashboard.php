@@ -24,7 +24,7 @@
       <!--  <header class="header">Header</header> -->
      <article class="header">
        <p>
-         <font size="6" color="green"><b>OPNFV@FUEL Developer's pipeline Dashboard</b></font></br>
+         <font size="6" color="green"><b>FUEL@OPNFV Developer's pipeline Dashboard</b></font></br>
          <img style="vertical-align:middle" src="images/LF.jpeg" height="90" width="150">
          <img style="vertical-align:middle" src="images/opnfv-extended.jpeg" height="75" width="150">
          <img style="vertical-align:middle" src="images/openstack.jpeg" height="150" width="150">
