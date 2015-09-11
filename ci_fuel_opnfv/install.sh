@@ -17,7 +17,7 @@ USER=`/usr/bin/logname`
 APT_PKG="git make curl libvirt-bin libpq-dev qemu-kvm qemu-system tightvncserver virt-manager sshpass fuseiso genisoimage blackbox xterm python-pip python-git python-dev python-oslo.config python-pip python-dev libffi-dev libxml2-dev libxslt1-dev libffi-dev libxml2-dev libxslt1-dev expect curl python-netaddr"
 PIP_PKG="GitPython pyyaml netaddr paramiko lxml scp python-novaclient python-neutronclient python-glanceclient python-keystoneclient debtcollector netifaces"
 
-sudo apt-get update
+
 
 if [ `id -u` != 0 ]; then
   echo "This script must run as root!!!!"
@@ -55,7 +55,7 @@ if [[ -z `lsb_release -a | grep Release | grep 14.04` ]]; then
     echo "Add you user to docker and libvirtd groups:"
     echo "# sudo adduser <your UID> docker"
     echo "# sudo adduser <your UID> libvirtd"
-    echo 
+    echo
     echo "Log-out followed by a Log-in"
     echo
     echo "Restart the docker and libvirtd deamons:"
@@ -89,7 +89,7 @@ if [ "$ACCEPT" != "Y" ]; then
     echo "Add your user to docker and libvirtd groups:"
     echo "# sudo adduser <your UID> docker"
     echo "# sudo adduser <your UID> libvirtd"
-    echo 
+    echo
     echo "Log-out followed by a Log-in"
     echo
     echo "Restart the docker and libvirtd deamons:"
@@ -101,10 +101,9 @@ if [ "$ACCEPT" != "Y" ]; then
     exit 1
 fi
 
+sudo apt-get update
 sudo apt-get install $APT_PKG
-
 sudo pip install $PIP_PKG
-
 pip install --upgrade oslo.config
 
 curl -sSL https://get.docker.com/ | sh
@@ -119,7 +118,7 @@ echo "Log-out and Log-in again....."
 echo "Restart the docker and libvirtd deamons:"
 echo "> sudo service libvirtd restart"
 echo "> sudo service docker restart"
-echo 
+echo
 echo "Now it is time to start playing with the CI engine:"
 echo "The most basic task is to clone, build, deploy and verify a stable branch:"
 echo "Try:"
