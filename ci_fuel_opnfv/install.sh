@@ -128,7 +128,7 @@ echo
 echo "Do you want to browse the README file?"
 echo "(Y/N)?"
 read ACCEPT
-if [ $ACCEPT != "Y" ]; then
+if [ "$ACCEPT" == "Y" ]; then
     more ${SCRIPT_PATH}/README.rst
 fi
 echo "===================================================="
