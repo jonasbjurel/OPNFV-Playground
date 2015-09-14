@@ -416,7 +416,7 @@ settings:
       libvirt_type:
         label: Hypervisor type
         type: radio
-        value: kvm
+        value: qemu
         values:
         - data: kvm
           description: Choose this type of hypervisor if you run OpenStack on hardware
