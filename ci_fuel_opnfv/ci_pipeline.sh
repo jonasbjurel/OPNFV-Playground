@@ -464,12 +464,12 @@ function deploy {
         # Handle different deployer versions
         case "${VERSION}" in
             "6.0")
-                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
                 sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
                 ;;
             *)
-                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
-                sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
+                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
                 ;;
         esac
     else
