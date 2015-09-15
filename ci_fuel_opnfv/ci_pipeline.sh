@@ -72,10 +72,11 @@ $0 - Simple Fuel@OPNFV CI Pipeline:
 4) Performs basic health tests
 5) Perfoms ordinary OPNFV CI pipeline functional tests
 
-usage: $0 [-h] [-a] [-u local user] [-r local repo path] [-b branch | -c change-set ] [-BDT] [-t] [-i Iso image] [-p | -P] [-I] [Linux foundation user]
+usage: $0 [-h] [-a deploy_config] [-u local user] [-r local repo path] [-b branch | -c change-set ] [-BDT] [-t] [-i Iso image] [-p | -P] [-I] [Linux foundation user]
 
 -h Prints this message.
--a Deploys a High availability configuration
+-a Deploys the named config from config/<Fuel version>/deploy_config. Defaults to "default_no_ha", or the
+   content of the environment variable \$DEPLOYTGT.
 -u local linux user, only needed if the script is not placed under the home of the user that
    should be used for non priviledged bash actions.
 -r Path to a local repository rather than using standard Fuel@OPNFV repo, this option can not be combined with the -c, -B, or -I options.
@@ -412,6 +413,9 @@ function build {
 #
 
 function deploy {
+    local ISOFILE
+
+
     PUSH_PATH=`pwd`
     echo
     echo "========== Deploying =========="
@@ -428,11 +432,49 @@ function deploy {
     echo "Repo path is ${REPO_PATH}"
 
     if [ $BUILD -eq 1 ]; then
-       echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO} ${DEA} ${DHA}
-       sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO} ${DEA} ${DHA}
+       ISOFILE=${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO}
     else
-       echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${LOCAL_ISO} ${DEA} ${DHA}
-       sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${LOCAL_ISO} ${DEA} ${DHA}
+       ISOFILE=${LOCAL_ISO}
+    fi
+
+
+    VERSION=$(7z x -so $ISOFILE version.yaml 2>/dev/null \
+        | grep release | sed 's/.*: "\(...\).*/\1/')
+
+    if [ -n "${VERSION}" ]; then
+        echo "Fuel version is in ISO is ${VERSION}"
+    else
+        echo "Error: Could not retrieve Fuel version from $ISOFILE"
+        exit 1
+    fi
+
+    if [ -d "${SCRIPT_PATH}/config/${VERSION}"  ]; then
+        DEA=${SCRIPT_PATH}/config/${VERSION}/${DEPLOY_CONFIG}/dea.yaml
+        DHA=${SCRIPT_PATH}/config/${VERSION}/${DEPLOY_CONFIG}/dha.yaml
+        if [ ! -f $DEA ]; then
+            echo "Could not find DEA file $DEA"
+            exit 1
+        fi
+
+        if [ ! -f $DHA ]; then
+            echo "Could not find DHA file $DHA"
+            exit 1
+        fi
+
+        # Handle different deployer versions
+        case "${VERSION}" in
+            "6.0")
+                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
+                sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
+                ;;
+            *)
+                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                ;;
+        esac
+    else
+        echo "Error: No deploy config directory for ${VERSION}"
+        exit 1
     fi
     cd $PUSH_PATH
 }
@@ -643,8 +685,11 @@ ISO="opnfv-${VERSION}.iso"
 ISO_META="${ISO}.txt"
 BRANCH="master"
 CHANGE_SET=""
-DEA="${SCRIPT_PATH}/config/multinode/dea.yaml"
-DHA="${SCRIPT_PATH}/config/multinode/dha.yaml"
+if [ -n "${DEPLOYTGT}" ]; then
+    DEPLOY_CONFIG=${DEPLOYTGT}
+else
+    DEPLOY_CONFIG="default_no_ha"
+fi
 STATUS_FILE_PATH="/var/run/fuel"
 BUILD=1
 DEPLOY=1
@@ -683,8 +728,6 @@ umask 0002
 # Add the path to the CI tools directory
 export PATH=${SCRIPT_PATH}/tools:$PATH
 
-# Enable the exit trap
-trap do_exit SIGINT SIGTERM EXIT
 
 if [ "$(id -u)" == "0" ]; then
    echo "This script MUST NOT be run as root" 1>&2
@@ -692,7 +735,7 @@ if [ "$(id -u)" == "0" ]; then
    exit 1
 fi
 
-while getopts "au:b:c:r:l:BDTi:tIpPh" OPTION
+while getopts "a:u:b:c:r:l:BDTi:tIpPh" OPTION
 do
     case $OPTION in
         h)
@@ -701,8 +744,7 @@ do
             exit 0
             ;;
         a)
-            DEA="${SCRIPT_PATH}/config/ha/dea.yaml"
-            DHA="${SCRIPT_PATH}/config/ha/dha.yaml"
+            DEPLOY_CONFIG=${OPTARG}
             ;;
         u)
             USER=${OPTARG}
@@ -770,11 +812,15 @@ do
     esac
 done
 
-LF_USER=$(echo $@ | cut -d ' ' -f ${OPTIND})
+shift $[OPTIND - 1]
+LF_USER=$@
 if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
     BRANCH="NIL"
     COMMIT_ID="NIL"
 fi
+
+# Enable the exit trap
+trap do_exit SIGINT SIGTERM EXIT
 
 cd ${SCRIPT_PATH}
 

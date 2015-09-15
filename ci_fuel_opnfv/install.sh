@@ -14,7 +14,7 @@ umask 0002
 SCRIPT_PATH=`cd $(dirname $0); pwd`
 USER=`/usr/bin/logname`
 
-APT_PKG="git make curl libvirt-bin libpq-dev qemu-kvm qemu-system tightvncserver virt-manager sshpass fuseiso genisoimage blackbox xterm python-pip python-git python-dev python-oslo.config python-pip python-dev libffi-dev libxml2-dev libxslt1-dev libffi-dev libxml2-dev libxslt1-dev expect curl python-netaddr"
+APT_PKG="git make curl libvirt-bin libpq-dev qemu-kvm qemu-system tightvncserver virt-manager sshpass fuseiso genisoimage blackbox xterm python-pip python-git python-dev python-oslo.config python-pip python-dev libffi-dev libxml2-dev libxslt1-dev libffi-dev libxml2-dev libxslt1-dev expect curl python-netaddr p7zip-full"
 PIP_PKG="GitPython pyyaml netaddr paramiko lxml scp python-novaclient python-neutronclient python-glanceclient python-keystoneclient debtcollector netifaces"
 
 
@@ -93,7 +93,7 @@ if [ "$ACCEPT" != "Y" ]; then
     echo "Log-out followed by a Log-in"
     echo
     echo "Restart the docker and libvirtd deamons:"
-    echo "# sudo service libvirtd restart"
+    echo "# sudo service libvirt-bin restart"
     echo "# sudo service docker restart"
     echo
     echo "From this point on - see README.rst"
@@ -116,7 +116,7 @@ echo "=========== INSTALLATION ALMOST READY =============="
 echo "IMPORTANT:"
 echo "Log-out and Log-in again....."
 echo "Restart the docker and libvirtd deamons:"
-echo "> sudo service libvirtd restart"
+echo "> sudo service libvirt-bin restart"
 echo "> sudo service docker restart"
 echo
 echo "Now it is time to start playing with the CI engine:"
