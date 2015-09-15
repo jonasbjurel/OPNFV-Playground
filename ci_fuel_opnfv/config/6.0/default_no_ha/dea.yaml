@@ -410,7 +410,7 @@ settings:
         type: radio
         value: kvm
         values:
-        - data: kvm
+        - data: qemu
           description: Choose this type of hypervisor if you run OpenStack on hardware
           label: KVM
           restrictions:
