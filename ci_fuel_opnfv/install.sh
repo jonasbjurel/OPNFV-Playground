@@ -58,8 +58,8 @@ if [[ -z `lsb_release -a | grep Release | grep 14.04` ]]; then
     echo
     echo "Log-out followed by a Log-in"
     echo
-    echo "Restart the docker and libvirtd deamons:"
-    echo "# sudo service libvirtd restart"
+    echo "Restart the docker and libvirt-bin deamons:"
+    echo "# sudo service libvirt-bin restart"
     echo "# sudo service docker restart"
     echo
     echo "From this point on - see README.rst"
@@ -92,7 +92,7 @@ if [ "$ACCEPT" != "Y" ]; then
     echo
     echo "Log-out followed by a Log-in"
     echo
-    echo "Restart the docker and libvirtd deamons:"
+    echo "Restart the docker and libvirt-bin deamons:"
     echo "# sudo service libvirt-bin restart"
     echo "# sudo service docker restart"
     echo
@@ -115,7 +115,7 @@ echo "===================================================="
 echo "=========== INSTALLATION ALMOST READY =============="
 echo "IMPORTANT:"
 echo "Log-out and Log-in again....."
-echo "Restart the docker and libvirtd deamons:"
+echo "Restart the docker and libvirt-bin deamons:"
 echo "> sudo service libvirt-bin restart"
 echo "> sudo service docker restart"
 echo
