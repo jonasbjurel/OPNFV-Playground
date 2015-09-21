@@ -438,19 +438,19 @@ function deploy {
     fi
 
 
-    VERSION=$(7z x -so $ISOFILE version.yaml 2>/dev/null \
+    FUEL_VERSION=$(7z x -so $ISOFILE version.yaml 2>/dev/null \
         | grep release | sed 's/.*: "\(...\).*/\1/')
 
-    if [ -n "${VERSION}" ]; then
-        echo "Fuel version is in ISO is ${VERSION}"
+    if [ -n "${FUEL_VERSION}" ]; then
+        echo "Fuel version is in ISO is ${FUEL_VERSION}"
     else
         echo "Error: Could not retrieve Fuel version from $ISOFILE"
         exit 1
     fi
 
-    if [ -d "${SCRIPT_PATH}/config/${VERSION}"  ]; then
-        DEA=${SCRIPT_PATH}/config/${VERSION}/${DEPLOY_CONFIG}/dea.yaml
-        DHA=${SCRIPT_PATH}/config/${VERSION}/${DEPLOY_CONFIG}/dha.yaml
+    if [ -d "${SCRIPT_PATH}/config/${FUEL_VERSION}"  ]; then
+        DEA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dea.yaml
+        DHA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dha.yaml
         if [ ! -f $DEA ]; then
             echo "Could not find DEA file $DEA"
             exit 1
@@ -462,7 +462,7 @@ function deploy {
         fi
 
         # Handle different deployer versions
-        case "${VERSION}" in
+        case "${FUEL_VERSION}" in
             "6.0")
                 echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
                 sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
@@ -568,7 +568,7 @@ function func_test {
         put_status
 
         mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally
-        # <FIX> Rally cant run as other than root - root-cause is probably that func test cant install with su ".." 
+        # <FIX> Rally cant run as other than root - root-cause is probably that func test cant install with su ".."
         # <FIX> Until rally runs OK, set +e
         set +e
         #su -c "source credentials/openrc && python functest/testcases/VIM/OpenStack/CI/libraries/run_rally.py functest/ all" ${USER}
