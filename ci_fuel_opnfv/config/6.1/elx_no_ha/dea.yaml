@@ -611,7 +611,7 @@ settings:
         description: Which provision method to use for this cluster.
         label: Provision method
         type: radio
-        value: cobbler
+        value: image
         values:
         - data: image
           description: Copying pre-built images on a disk.
