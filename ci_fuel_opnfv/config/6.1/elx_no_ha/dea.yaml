@@ -656,22 +656,22 @@ settings:
         value:
         - name: ubuntu
           priority: null
-          section: main universe multiverse
+          section: main
           suite: trusty
           type: deb
-          uri: http://archive.ubuntu.com/ubuntu/
+          uri: http://10.20.0.2:8080/ubuntu-part
         - name: ubuntu-updates
           priority: null
-          section: main universe multiverse
-          suite: trusty-updates
+          section: main
+          suite: trusty
           type: deb
-          uri: http://archive.ubuntu.com/ubuntu/
+          uri: http://10.20.0.2:8080/ubuntu-part
         - name: ubuntu-security
           priority: null
-          section: main universe multiverse
-          suite: trusty-security
+          section: main
+          suite: trusty
           type: deb
-          uri: http://archive.ubuntu.com/ubuntu/
+          uri: http://10.20.0.2:8080/ubuntu-part
         - name: mos
           priority: 1050
           section: main restricted
@@ -683,19 +683,19 @@ settings:
           section: main restricted
           suite: mos6.1-updates
           type: deb
-          uri: http://mirror.fuel-infra.org/mos/ubuntu/
+          uri: http://10.20.0.2:8080/mos-ubuntu
         - name: mos-security
           priority: 1050
           section: main restricted
           suite: mos6.1-security
           type: deb
-          uri: http://mirror.fuel-infra.org/mos/ubuntu/
+          uri: http://10.20.0.2:8080/mos-ubuntu
         - name: mos-holdback
           priority: 1100
           section: main restricted
           suite: mos6.1-holdback
           type: deb
-          uri: http://mirror.fuel-infra.org/mos/ubuntu/
+          uri: http://10.20.0.2:8080/mos-ubuntu
         - name: Auxiliary
           priority: 1150
           section: main restricted
