@@ -335,7 +335,7 @@ settings:
       libvirt_type:
         label: Hypervisor type
         type: radio
-        value: kvm 
+        value: kvm
         values:
         - data: kvm
           description: Choose this type of hypervisor if you run OpenStack on hardware
@@ -360,7 +360,7 @@ settings:
           more disk space.
         label: Puppet debug logging
         type: checkbox
-        value: false 
+        value: false
         weight: 20
       resume_guests_state_on_host_boot:
         description: Whether to resume previous guests state when the host reboots.
