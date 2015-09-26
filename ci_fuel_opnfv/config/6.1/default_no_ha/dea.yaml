@@ -2,9 +2,9 @@ title: Deployment Environment Adapter (DEA)
 # DEA API version supported
 version:
 created:
-comment: Small libvirt setup
+comment: Config for Virtual Environment - HA deployment with Ceph and Opendaylight
 environment:
-  name: opnfv_virt
+  name: opnfv-virt
   mode: ha
   net_segment_type: gre
 wanted_release: Juno on Ubuntu 14.04.1
@@ -25,15 +25,10 @@ nodes:
   interfaces: interfaces_1
   transformations: transformations_2
   role: ceph-osd,compute
-opnfv:
-  hosts:
-  - name:
-    address:
-    fqdn:
 fuel:
   ADMIN_NETWORK:
     ipaddress: 10.20.0.2
-    netmask: 255.255.255.0
+    netmask: 255.255.0.0
     dhcp_pool_start: 10.20.0.3
     dhcp_pool_end: 10.20.0.254
   DNS_UPSTREAM: 8.8.8.8
@@ -115,6 +110,8 @@ transformations_2:
     bridge: br-mesh
     name: eth2.103
 network:
+  management_vip: 192.168.0.2
+  management_vrouter_vip: 192.168.0.3
   networking_parameters:
     base_mac: fa:16:3e:00:00:00
     dns_nameservers:
@@ -160,7 +157,7 @@ network:
   - cidr: 192.168.0.0/24
     gateway: null
     ip_ranges:
-    - - 192.168.0.1
+    - - 192.168.0.2
       - 192.168.0.254
     meta:
       cidr: 192.168.0.0/24
@@ -197,7 +194,7 @@ network:
   - cidr: 192.168.2.0/24
     gateway: null
     ip_ranges:
-    - - 192.168.2.1
+    - - 192.168.2.2
       - 192.168.2.254
     meta:
       cidr: 192.168.2.0/24
@@ -212,7 +209,7 @@ network:
       vlan_start: 103
     name: private
     vlan_start: 103
-  - cidr: 10.20.0.0/24
+  - cidr: 10.20.0.0/16
     gateway: 10.20.0.2
     ip_ranges:
     - - 10.20.0.3
@@ -227,6 +224,8 @@ network:
       use_gateway: true
     name: fuelweb_admin
     vlan_start: null
+  public_vip: 172.16.0.2
+  public_vrouter_vip: 172.16.0.3
 settings:
   editable:
     access:
@@ -361,7 +360,7 @@ settings:
           more disk space.
         label: Puppet debug logging
         type: checkbox
-        value: true
+        value: false
         weight: 20
       resume_guests_state_on_host_boot:
         description: Whether to resume previous guests state when the host reboots.
@@ -657,22 +656,22 @@ settings:
         value:
         - name: ubuntu
           priority: null
-          section: main universe multiverse
+          section: main
           suite: trusty
           type: deb
-          uri: http://archive.ubuntu.com/ubuntu/
+          uri: http://10.20.0.2:8080/ubuntu-part
         - name: ubuntu-updates
           priority: null
-          section: main universe multiverse
-          suite: trusty-updates
+          section: main
+          suite: trusty
           type: deb
-          uri: http://archive.ubuntu.com/ubuntu/
+          uri: http://10.20.0.2:8080/ubuntu-part
         - name: ubuntu-security
           priority: null
-          section: main universe multiverse
-          suite: trusty-security
+          section: main
+          suite: trusty
           type: deb
-          uri: http://archive.ubuntu.com/ubuntu/
+          uri: http://10.20.0.2:8080/ubuntu-part
         - name: mos
           priority: 1050
           section: main restricted
@@ -684,19 +683,19 @@ settings:
           section: main restricted
           suite: mos6.1-updates
           type: deb
-          uri: http://mirror.fuel-infra.org/mos/ubuntu/
+          uri: http://10.20.0.2:8080/mos-ubuntu
         - name: mos-security
           priority: 1050
           section: main restricted
           suite: mos6.1-security
           type: deb
-          uri: http://mirror.fuel-infra.org/mos/ubuntu/
+          uri: http://10.20.0.2:8080/mos-ubuntu
         - name: mos-holdback
           priority: 1100
           section: main restricted
           suite: mos6.1-holdback
           type: deb
-          uri: http://mirror.fuel-infra.org/mos/ubuntu/
+          uri: http://10.20.0.2:8080/mos-ubuntu
         - name: Auxiliary
           priority: 1150
           section: main restricted
