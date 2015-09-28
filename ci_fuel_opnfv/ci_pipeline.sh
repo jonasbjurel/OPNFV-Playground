@@ -28,7 +28,7 @@ do_exit () {
     put_result;
     if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then
         chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
-        chgrp rnd ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
+        chgrp ${GROUP} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
     fi
     echo "result: $rc"
     # Note exit code 100 is a special code for no clean-up,
@@ -522,7 +522,7 @@ function func_test {
     #su -c "cat openrc.orig | sed "'${OS_AUTH_LINE}'s/.*/'"export OS_AUTH_URL=${EXT_AUTH_URL}"'/' > openrc" ${USER}
     cat openrc.orig | sed ''${OS_AUTH_LINE}'s/.*/'"export OS_AUTH_URL=${EXT_AUTH_URL}"'/' > openrc
     chown $USER openrc
-    chgrp rnd openrc
+    chgrp $GROUP openrc
 
     # Clone the functest repo and configure it
     echo "Cloning functest...."
@@ -671,6 +671,7 @@ SCRIPT=$(readlink -f $0)
 SCRIPT_PATH=`dirname $SCRIPT`
 HOME_SUFIX=${SCRIPT_PATH##/home/}
 USER=${HOME_SUFIX%%/*}
+GROUP=`id -gn`
 
 if [ -z $HOME ]; then
    export HOME="/home/$USER"
