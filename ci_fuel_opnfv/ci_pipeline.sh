@@ -670,7 +670,7 @@ cd $PUSH_PATH
 SCRIPT=$(readlink -f $0)
 SCRIPT_PATH=`dirname $SCRIPT`
 HOME_SUFIX=${SCRIPT_PATH##/home/}
-USER=`id -n`
+USER=`id -un`
 GROUP=`id -gn`
 
 if [ -z $HOME ]; then
