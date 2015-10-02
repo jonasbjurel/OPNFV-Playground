@@ -34,5 +34,5 @@ virtNetConfDir: templates/virtual_environment/networks
 
 disks:
   fuel: 50G
-  controller: 30G
-  compute: 30G
+  controller: 50G
+  compute: 50G
