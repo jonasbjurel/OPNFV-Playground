@@ -18,7 +18,7 @@ do_exit () {
         RESULT="INFO CI-pipeline interrupted"
     fi
     if [ ${rc} -ne 0 ]; then
-        if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then 
+        if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
             echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"
         else
             echo "FAILED - see the log for details: ${RESULT_FILE}"
@@ -40,13 +40,13 @@ do_exit () {
         put_status
     fi
 
-     if [ ! -z ${LOGPID} ]; then 
+     if [ ! -z ${LOGPID} ]; then
          kill $LOGPID
      fi
-     if [ ! -z ${TEMPEST_LOGPID} ]; then 
+     if [ ! -z ${TEMPEST_LOGPID} ]; then
          kill ${TEMPEST_LOGPID}
      fi
-     if [ ! -z ${VPING_LOGPID} ]; then 
+     if [ ! -z ${VPING_LOGPID} ]; then
          kill ${VPING_LOGPID}
      fi
 
@@ -130,9 +130,6 @@ function parse_yaml() {
 #
 # END of .yaml parser
 ############################################################################
-
-
-
 
 ############################################################################
 # BEGIN of fetch_config
@@ -314,7 +311,7 @@ function clone_repo {
     cd ${SCRIPT_PATH}
     if [ ${LOCAL_PATH_PROVIDED} -eq 0 ]; then
         if [ $CHANGE_SET_PROVIDED -eq 0 ]; then
-            REPO_PATH=${SCRIPT_PATH}/"genesis"
+            REPO_PATH=${SCRIPT_PATH}/"fuel"
         else
             REPO_PATH=${SCRIPT_PATH}/${CHANGE_SET}
         fi
@@ -644,7 +641,7 @@ function clean {
         fi
         cd ${SCRIPT_PATH} && rm -rf functest
         cd ${HOME} && rm -rf functest
-        cd ${SCRIPT_PATH} && rm -rf genesis
+        cd ${SCRIPT_PATH} && rm -rf fuel
         cd ${SCRIPT_PATH} && rm -rf credentials/openrc*
         cd ${SCRIPT_PATH} && rm -rf output.txt
 
@@ -837,8 +834,8 @@ eval_params
 
 check_avail
 
-GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/genesis ${CHANGE_SET}"
-GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/genesis"
+GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/fuel ${CHANGE_SET}"
+GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/fuel"
 
 echo "========== Running CI-pipeline with the following parameters =========="
 echo "Starting CI with the following script options: $0 $@"
