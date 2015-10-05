@@ -2,7 +2,7 @@ title: Deployment Environment Adapter (DEA)
 # DEA API version supported
 version:
 created:
-comment: Config for Virtual Environment - HA deployment with Ceph and Opendaylight
+comment: Config for Virtual Environment - HA deployment with Cinder and Opendaylight
 environment:
   name: opnfv-virt
   mode: ha
@@ -12,19 +12,19 @@ nodes:
 - id: 1
   interfaces: interfaces_1
   transformations: transformations_1
-  role: ceph-osd,controller
+  role: cinder,controller
 - id: 2
   interfaces: interfaces_1
   transformations: transformations_2
-  role: ceph-osd,compute
+  role: compute
 - id: 3
   interfaces: interfaces_1
   transformations: transformations_2
-  role: ceph-osd,compute
+  role: compute
 - id: 4
   interfaces: interfaces_1
   transformations: transformations_2
-  role: ceph-osd,compute
+  role: compute
 fuel:
   ADMIN_NETWORK:
     ipaddress: 10.20.0.2
@@ -360,7 +360,7 @@ settings:
           more disk space.
         label: Puppet debug logging
         type: checkbox
-        value: false
+        value: true
         weight: 20
       resume_guests_state_on_host_boot:
         description: Whether to resume previous guests state when the host reboots.
@@ -554,7 +554,7 @@ settings:
     opendaylight:
       metadata:
         enabled: true
-        label: OpenDaylight plugin
+        label: OpenDaylight Lithium plugin
         plugin_id: 1
         restrictions:
         - cluster:net_provider != 'neutron': Only neutron is supported by OpenDaylight
@@ -710,7 +710,7 @@ settings:
           work with VMs launched from Cinder volumes).
         label: Ceph RBD for ephemeral volumes (Nova)
         type: checkbox
-        value: true
+        value: false
         weight: 75
       images_ceph:
         description: Configures Glance to use the Ceph RBD backend to store images.
@@ -720,7 +720,7 @@ settings:
         - settings:storage.images_vcenter.value == true: Only one Glance backend could
             be selected.
         type: checkbox
-        value: true
+        value: false
         weight: 30
       images_vcenter:
         description: Configures Glance to use the vCenter/ESXi backend to store images.
@@ -776,7 +776,7 @@ settings:
         restrictions:
         - settings:storage.volumes_lvm.value == true
         type: checkbox
-        value: true
+        value: false
         weight: 20
       volumes_lvm:
         description: It is recommended to have at least one Storage - Cinder LVM node.
@@ -784,7 +784,7 @@ settings:
         restrictions:
         - settings:storage.volumes_ceph.value == true
         type: checkbox
-        value: false
+        value: true
         weight: 10
     syslog:
       metadata:
