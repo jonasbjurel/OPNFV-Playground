@@ -72,16 +72,17 @@ $0 - Simple Fuel@OPNFV CI Pipeline:
 4) Performs basic health tests
 5) Perfoms ordinary OPNFV CI pipeline functional tests
 
-usage: $0 [-h] [-a deploy_config] [-u local user] [-r local repo path] [-b branch | -c change-set ] [-BDT] [-t] [-i Iso image] [-p | -P] [-I] [Linux foundation user]
+usage: $0 [-h] [-a deploy_config] [-u local user] [-r local repo path | -l local path] [-b branch | -c change-set ] [-BDT] [-t] [-i Iso image] [-p | -P] [-I]
 
 -h Prints this message.
 -a Deploys the named config from config/<Fuel version>/deploy_config. Defaults to "default_no_ha", or the
    content of the environment variable \$DEPLOYTGT.
 -u local linux user, only needed if the script is not placed under the home of the user that
    should be used for non priviledged bash actions.
--r Path to a local repository rather than using standard Fuel@OPNFV repo, this option can not be combined with the -c, -B, or -I options.
+-r Path to a local repository rather than using standard Fuel@OPNFV repo, this option can not be combined with the -c, -l, or -B options.
+-l Path to a local repository which will be used as is, including non staged/non tracked files, this option can not be combined with the -c, -r, -b, or -B options.
 -b Branch/commit Id to use, this option can not be combined with -B
--c Changeset to use, this option requires a "Linux foundation user" and can not be combined with the -B or -r options.
+-c Upstream Changeset to use, this option can not be combined with the -B, -b or -r options.
 -I Invalidate cache, invalidates local cache and builds all from upstream, cannot be accompanioned with the -B option.
 -B Skip build stage, this option cannot be combined with the -r, -b, -c or -D options.
 -D Skip deploy stage, this option must either be accompanioned with the -i <iso> option or else it can not be accompanioned with the -B option
@@ -94,7 +95,7 @@ usage: $0 [-h] [-a deploy_config] [-u local user] [-r local repo path] [-b branc
 Examples:
 $0 -b master -  (Clones, Builds, Deploys & Tests out of the master branch)
 $0 -b stable/arno  -  (Clones, Builds, Deploys & Tests out of stable/arno branch)
-$0 -c refs/changes/41/941/1 <my_lf_user> - (Clones, Builds, Deploys & Tests out of the non merged patch "/41/941/1")
+$0 -c refs/changes/41/941/1 (Clones, Builds, Deploys & Tests out of the non merged patch "/41/941/1")
 $0 -b master -DT - (Only builds master)
 $0 -T - (Only tests an existing seployment)
 $0 -BDT -P (Purges all except the installation)
@@ -198,38 +199,68 @@ function put_status {
 #
 function eval_params {
 
-    if [ $CHANGE_SET_PROVIDED -eq 1 ]; then
-        if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
-            echo "Can not operate on the change-set: -c $CHANGE_SET while working from local path -r $REPO_PATH"
+    if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
+
+        if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
+            echo "Cannot operate on a local path at the same time as requested to clone a local repo: -l $LOCAL_PATH -r $LOCAL_REPO"
+            usage
+            RESULT="ERROR - Faulty script input parameters"
+            exit 1
+        fi
+
+        if [ $BRANCH_PROVIDED -eq 1 ]; then
+            echo "Cannot operate on a local path while a branch is provided: -l $LOCAL_PATH -b $BRANCH"
             usage
             RESULT="ERROR - Faulty script input parameters"
             exit 1
         fi
 
         if [ $BUILD -eq 0 ]; then
-            echo Im here
+            echo "Providing a local path for build while ommiting build doesn't make sense - nothing to do: -l $LOCAL_PATH -B"
+            usage
+            RESULT="ERROR - Faulty script input parameters"
+            exit 1
+        fi
+    fi
+
+    if [ $CHANGE_SET_PROVIDED -eq 1 ]; then
+        if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
+            echo "Can not operate on the change-set: -c $CHANGE_SET while working from local path -l $LOCAL_PATH"
+            usage
+            RESULT="ERROR - Faulty script input parameters"
+            exit 1
+        fi
+
+        if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
+            echo "Can not operate on the change-set: -c $CHANGE_SET while working from local repo -r $REPO_PATH"
+            usage
+            RESULT="ERROR - Faulty script input parameters"
+            exit 1
+        fi
+
+        if [ $BRANCH_PROVIDED -eq 1 ]; then
+            echo "Can not operate on the change-set: -c $CHANGE_SET while refering to a branch -b $BRANCH"
+            usage
+            RESULT="ERROR - Faulty script input parameters"
+            exit 1
+        fi
+
+        if [ $BUILD -eq 0 ]; then
             echo "Providing a changeset: -c $CHANGE_SET while providing the -B option (skip build) does not make sense"
             usage
             RESULT="ERROR - Faulty script input parameters"
             exit 1
         fi
+    fi
 
-        if [[ -z $LF_USER ]]; then
-            echo "LF user provided needs to be provided in order to operate on a change-set"
-            usage
-            RESULT="ERROR - No LF user provided"
-            exit 1$CHANGE_SET_PROVIDED -eq 0
-        fi
+    if [ $DEPLOY -eq 0 ] && [ $TEST -eq 1 ]; then
+        echo "You need to deploy a build if you want to test it, option -D alone does not make sense (-DT could make sense if you only want to build, or -BD if you want to test an existing deployment)"
+        usage
+        RESULT="ERROR - Faulty script input parameters"
+        exit 1
     fi
 
     if [ $BUILD -eq 1 ]; then
-        if [ $DEPLOY -eq 0 ] && [ $TEST -eq 1 ]; then
-            echo "You need to deploy a build if you want to test it, option -D alone does not make sense (-DT could make sense if you only want to build, or -BD if you want to test an existing deployment)"
-            usage
-            RESULT="ERROR - Faulty script input parameters"
-            exit 1
-        fi
-
         if [ $LOCAL_ISO_PROVIDED -eq 1 ]; then
             echo "Since build has not been disabled (-B) it makes no sense to provide a local iso (-i $LOCAL_ISO)"
             usage
@@ -241,7 +272,7 @@ function eval_params {
     if [ $BUILD -eq 0 ]; then
         if [ $CHANGE_SET_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $LOCAL_PATH_PROVIDED -eq 1 ] || \
             [ $INVALIDATE_CACHE -eq 1 ]; then
-            echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), or to invalidate the build cache (-I)"
+            echo "As build is disabled (-B), it does not make sense to specify either of the following options: a change-set (-c ...), a local repository (-r ...), a local path (-l ...), or to invalidate the build cache (-I)"
             usage
             RESULT="ERROR - Faulty script input parameters"
             exit 1
@@ -271,11 +302,6 @@ function eval_params {
             echo "Since nothing will be deployed (-D) an existing deployment will be tested provided that one exists"
         fi
     fi
-
-    if [[ -z $LF_USER ]]; then
-        echo "Since no LinuxFoundation user is provided, the repositories will be pulled using https:// methods (as aposed to git:// or ssh://)"
-    fi
-
 }
 
 #
@@ -303,44 +329,31 @@ fi
 #
 
 function clone_repo {
-    PUSH_PATH=`pwd`
     RESULT="ERROR - GIT Cloning failed"
     STATUS="CLONING"
     put_status
 
-    cd ${SCRIPT_PATH}
+    pushd ${SCRIPT_PATH}
     if [ ${LOCAL_PATH_PROVIDED} -eq 0 ]; then
-        if [ $CHANGE_SET_PROVIDED -eq 0 ]; then
-            REPO_PATH=${SCRIPT_PATH}/"fuel"
-        else
-            REPO_PATH=${SCRIPT_PATH}/${CHANGE_SET}
-        fi
-
+        REPO_PATH=${SCRIPT_PATH}/"fuel"
         rm -rf ${REPO_PATH}
         if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
             echo
             echo "========== Cloning local ${LOCAL_REPO} =========="
-            git clone ${LOCAL_REPO}
+            git clone ${LOCAL_REPO} ${REPO_PATH}
         else
-            if [[ -z $LF_USER ]]; then
-                echo
-                echo "========== Cloning repository ${GIT_HTTPS_SRC} =========="
-                git clone ${GIT_HTTPS_SRC}
-            else
-                echo
-                echo "========== Cloning repository ${GIT_SRC} =========="
-                git clone ${GIT_SRC}
-            fi
+            echo "========== Cloning repository ${GIT_HTTPS_SRC} =========="
+            echo "GIT SRC: ${GIT_HTTPS_SRC}"
+            git clone ${GIT_HTTPS_SRC} ${REPO_PATH}
         fi
 
+        pushd ${REPO_PATH}
         if [ $CHANGE_SET_PROVIDED -eq 0 ]; then
             echo "========= Checking out branch/tag ${BRANCH} ========="
-            pushd ${REPO_PATH}
             git checkout ${BRANCH}
         else
-            echo "========== Pulling the patch ${CHANGE_SET} =========="
-            pushd ${REPO_PATH}
-            git pull ${GIT_SRC}
+            echo "========== Fetching the patch ${CHANGE_SET} =========="
+            git fetch ${GIT_HTTPS_SRC} ${CHANGE_SET} && git checkout FETCH_HEAD
         fi
         COMMIT_ID=`git rev-parse HEAD`
         popd
@@ -352,8 +365,7 @@ function clone_repo {
 
     BUILD_ARTIFACT_PATH="${REPO_PATH}/fuel/build_result"
     echo "Commit ID is ${COMMIT_ID}"
-
-    cd $PUSH_PATH
+    popd
 }
 
 #
@@ -674,6 +686,7 @@ if [ -z $HOME ]; then
    export HOME="/home/$USER"
 fi
 
+GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/fuel"
 BUILD_CACHE="${SCRIPT_PATH}/cache"
 BUILD_CACHE_URI="file://${BUILD_CACHE}"
 BUILD_ARTIFACT_STORE="artifact"
@@ -741,9 +754,11 @@ do
             rc=0
             exit 0
             ;;
+
         a)
             DEPLOY_CONFIG=${OPTARG}
             ;;
+
         u)
             USER=${OPTARG}
             USER_PROVIDED=1
@@ -757,6 +772,7 @@ do
 
         c)
             CHANGE_SET=${OPTARG}
+            BRANCH=${CHANGE_SET}
             CHANGE_SET_PROVIDED=1
             ;;
 
@@ -764,6 +780,7 @@ do
             LOCAL_PATH=${OPTARG}
             LOCAL_PATH_PROVIDED=1
             ;;
+
         r)
             LOCAL_REPO=${OPTARG}
             LOCAL_REPO_PROVIDED=1
@@ -802,7 +819,6 @@ do
             PURGE_ALL=1
             ;;
 
-
         *)
             echo "${OPTION} is not a valid argument"
             exit 1
@@ -810,8 +826,6 @@ do
     esac
 done
 
-shift $[OPTIND - 1]
-LF_USER=$@
 if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
     BRANCH="NIL"
     COMMIT_ID="NIL"
@@ -834,13 +848,9 @@ eval_params
 
 check_avail
 
-GIT_SRC="ssh://${LF_USER}@gerrit.opnfv.org:29418/fuel ${CHANGE_SET}"
-GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/fuel"
-
 echo "========== Running CI-pipeline with the following parameters =========="
 echo "Starting CI with the following script options: $0 $@"
 echo "Local user: ${USER}"
-echo "LinuxFoundation Gerrit user: ${LF_USER}"
 echo "Branch: ${BRANCH}"
 
 echo "Version: ${VERSION}"
@@ -849,11 +859,7 @@ echo "Change-set: ${CHANGE_SET}"
 if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
     METHOD="Local directory ${LOCAL_PATH}"
 else
-    if [[ -z $LF_USER ]]; then
-        METHOD="https://"
-    else
-        METHOD="ssh://"
-    fi
+    METHOD="https://"
 fi
 
 echo "Repository clone method: $METHOD"
