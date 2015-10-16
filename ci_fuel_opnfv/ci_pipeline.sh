@@ -38,6 +38,7 @@ do_exit () {
         clean;
         STATUS="IDLE"
         put_status
+        sudo rm -f ${PID_LOCK_FILE}
     fi
 
      if [ ! -z ${LOGPID} ]; then
@@ -352,12 +353,30 @@ function eval_params {
 # Check CI-pipeline availability
 #
 function check_avail {
-if [[ -e ${STATUS_FILE_PATH}/ci-status ]] && [[ -z `cat ${STATUS_FILE_PATH}/ci-status | grep IDLE` ]]; then
-    echo "CI-Pipline busy!"
-    RESULT="INFO - CI-pipeline busy"
-    rc=100
-    exit 100
-fi
+    pushd `pwd` &> /dev/null
+
+    # Use a lockfile containing the pid of the running process
+    # If script crashes and leaves lockfile around, it will have a different pid
+    # and will not prevent script running again.
+    #
+
+    # create empty lock file if none exists
+    sudo touch ${PID_LOCK_FILE}
+
+    # if lastPID is not null and a process with that pid exist, exit
+    set +e
+    read lastPID < $PID_LOCK_FILE
+    set -e
+    if [ ! -z "$lastPID" -a -d /proc/$lastPID ]; then
+        echo "CI-Pipline busy!"
+        RESULT="INFO - CI-pipeline busy"
+        rc=100
+        exit 100
+    fi
+    # save my pid in the lock file
+    sudo sh -c "echo $$ > ${PID_LOCK_FILE}"
+
+    popd &> /dev/null
 }
 
 #
@@ -749,6 +768,8 @@ else
     DEPLOY_CONFIG="default_no_ha"
 fi
 STATUS_FILE_PATH="/var/run/fuel"
+PID_LOCK_FILE="${STATUS_FILE_PATH}/PID"
+
 BUILD=1
 DEPLOY=1
 TEST=1
