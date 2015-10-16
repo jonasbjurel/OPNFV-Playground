@@ -26,9 +26,9 @@ do_exit () {
     fi
     TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME];
     put_result;
-    if [ -e ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then
-        chown ${USER} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
-        chgrp ${GROUP} ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
+    if [ -e ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log ]; then
+        chown ${USER} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
+        chgrp ${GROUP} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log
     fi
     echo "result: $rc"
     # Note exit code 100 is a special code for no clean-up,
@@ -43,11 +43,8 @@ do_exit () {
      if [ ! -z ${LOGPID} ]; then
          kill $LOGPID
      fi
-     if [ ! -z ${TEMPEST_LOGPID} ]; then
-         kill ${TEMPEST_LOGPID}
-     fi
-     if [ ! -z ${VPING_LOGPID} ]; then
-         kill ${VPING_LOGPID}
+     if [ ! -z ${FUNC_TEST_LOGPID} ]; then
+         kill ${FUNC_TEST_LOGPID}
      fi
 
      echo "Exiting ..."
@@ -57,14 +54,13 @@ do_exit () {
 # End of Exit handlers
 ############################################################################
 
-
 ############################################################################
 # BEGIN of usage description
 #
 usage ()
 {
     me=$(basename $0)
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
     cat | more << EOF
 $me - Simple Fuel@OPNFV CI Pipeline:
 1) Clones and check-out Fuel@OPNFV from OPNFV Repos"
@@ -98,10 +94,10 @@ usage: $me [-h] [-a deploy_config] [-u local user] |
 -D Skip deploy stage, this option must either be accompanioned with the
    -i <iso> option or else it can not be accompanioned with the -B option
 -T Skip functest stage
--t Only perform smoke test, this option can not be accompanioned with the -T
-   option,
+-t Only perform smoke test, this option can not be accompanioned with the
+   -T option - NOT YET SUPPORTED
 -i iso image (needed if build stage is skipped and no previous deployment
-    exists), this option assumes the -B option.
+   exists), this option asumes the -B option.
 -p Post run - Purge all including running deployment - but excluding cache
 -P Post run - purge ALL
 
@@ -118,7 +114,7 @@ $me -BDT -P (Purges all except the installation)
 
 NOTE: THIS SCRIPT MAY NOT BE RAN AS ROOT
 EOF
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 #
 # END of usage description
@@ -128,7 +124,7 @@ EOF
 # BEGIN of .yaml parser
 #
 function parse_yaml() {
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
     local prefix=$2
     local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
     sed -ne "s|^\($s\)\($w\)$s:$s\"\(.*\)\"$s\$|\1$fs\2$fs\3|p" \
@@ -142,7 +138,7 @@ function parse_yaml() {
          printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
       }
    }'
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 #
 # END of .yaml parser
@@ -152,24 +148,27 @@ function parse_yaml() {
 # BEGIN of fetch_config
 #
 function fetch_config() {
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
+
     # Parse config yaml files
     eval $(parse_yaml ${DEA} "dea_")
     eval $(parse_yaml ${DHA} "dha_")
 
     # Assign config variables
+    # Todo: yaml parser need to improve such that it can parse arrays and catch OS_IP below
     FUEL_IP=$dea_fuel_ADMIN_NETWORK_ipaddress
     FUEL_GUI_USR=$dea_fuel_FUEL_ACCESS_user
     FUEL_GUI_PASSWD=$dea_fuel_FUEL_ACCESS_password
     FUEL_SSH_USR=$dha_nodes_username
     FUEL_SSH_PASSWD=$dha_nodes_password
-
-    # Todo: yaml parser need to improve such that it can parse arrays and catch OS_IP below
+    MGMT_PHY_NETW=fuel1
+    MGMT_VLAN=101
+    MGMT_HOST_IP=192.168.0.66/24
     OS_IP="172.16.0.2"
     ADMIN_OS_USR="admin"
     ADMIN_OS_PASSWD=$dea_settings_editable_access_password_value
 
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 
 #
@@ -221,13 +220,13 @@ get_changes() {
 # Start output of CI result
 #
 function put_result {
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
     LOG_MSG="Result: ${RESULT} | Build Id: ${VERSION} | Branch: ${BRANCH} | Commit ID: ${COMMIT_ID} | Total ci pipeline time: ${TOTAL_TIME} min | Total build time: ${BUILD_TIME} min | Total deployment time: ${DEPLOY_TIME} | Total functest time: ${TEST_TIME}"
     echo $LOG_MSG >> ${SCRIPT_PATH}/${RESULT_FILE}
     if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
         echo $LOG_MSG > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${RESULT_FILE}
     fi
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 #
 # END of output
@@ -237,14 +236,14 @@ function put_result {
 # Start report CI status
 #
 function put_status {
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
     sudo mkdir -p ${STATUS_FILE_PATH}
     if [ ${STATUS} == "IDLE" ]; then
-        sudo sh -c "echo \"${STATUS} | $('date')\" > ${STATUS_FILE_PATH}/ci-status"
+        sudo sh -c "echo \"${STATUS} | $('date')\" > ${STATUS_FILE}"
     else
-        sudo sh -c "sudo echo \"${STATUS} | $('date') | ${BRANCH} | ${COMMIT_ID} | ${VERSION}\" > ${STATUS_FILE_PATH}/ci-status"
+        sudo sh -c "sudo echo \"${STATUS} | $('date') | ${BRANCH} | ${COMMIT_ID} | ${VERSION}\" > ${STATUS_FILE}"
     fi
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 
 #
@@ -256,6 +255,7 @@ function put_status {
 #
 function eval_params {
 
+    pushd `pwd` &> /dev/null
     if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
 
         if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
@@ -293,7 +293,7 @@ function eval_params {
         exit 1
     fi
 
-    if [ $DEPLOY -eq 0 ] && [ $TEST -eq 1 ]; then
+    if [ $BUILD -eq 1 ] && [ $DEPLOY -eq 0 ] && [ $TEST -eq 1 ]; then
         echo "You need to deploy a build if you want to test it, option -D alone does not make sense (-DT could make sense if you only want to build, or -BD if you want to test an existing deployment)"
         usage
         RESULT="ERROR - Faulty script input parameters"
@@ -342,6 +342,7 @@ function eval_params {
             echo "Since nothing will be deployed (-D) an existing deployment will be tested provided that one exists"
         fi
     fi
+    popd &> /dev/null
 }
 
 #
@@ -352,12 +353,15 @@ function eval_params {
 # Check CI-pipeline availability
 #
 function check_avail {
-if [[ -e ${STATUS_FILE_PATH}/ci-status ]] && [[ -z `cat ${STATUS_FILE_PATH}/ci-status | grep IDLE` ]]; then
-    echo "CI-Pipline busy!"
-    RESULT="INFO - CI-pipeline busy"
-    rc=100
-    exit 100
-fi
+    pushd `pwd` &> /dev/null
+    if [[ -e ${STATUS_FILE} ]] && [[ -z `cat ${STATUS_FILE} | grep IDLE` ]]; then
+        echo "CI-Pipline busy!"
+        RESULT="INFO - CI-pipeline busy"
+        rc=100
+        exit 100
+    fi
+
+    popd &> /dev/null
 }
 
 #
@@ -369,6 +373,7 @@ fi
 #
 
 function clone_repo {
+    pushd `pwd` &> /dev/null
     RESULT="ERROR - GIT Cloning failed"
     STATUS="CLONING"
     put_status
@@ -411,7 +416,7 @@ function clone_repo {
 
     BUILD_ARTIFACT_PATH="${REPO_PATH}/fuel/build_result"
     echo "Commit ID is ${COMMIT_ID}"
-    popd
+    popd &> /dev/null
 }
 
 #
@@ -423,7 +428,7 @@ function clone_repo {
 #
 
 function build {
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
     echo "========== Preparing build =========="
     RESULT="ERROR - Build failed"
     STATUS="BUILDING"
@@ -435,8 +440,6 @@ function build {
 
     echo
     echo "========== Building  =========="
-    # <FIX> NEED TO FIX "build.sh" such as it can be ran from arbitrary parent path
-
     if [ $INVALIDATE_CACHE -ne 1 ]; then
         pushd ${REPO_PATH}/fuel/ci
         echo ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
@@ -456,7 +459,7 @@ function build {
     echo cp ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
     cp ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
 
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 
 #
@@ -470,8 +473,7 @@ function build {
 function deploy {
     local ISOFILE
 
-
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
     echo
     echo "========== Deploying =========="
     RESULT="ERROR - Deploy failed"
@@ -479,10 +481,9 @@ function deploy {
     put_status
 
     echo "Starting virtualization manager GUI"
-
-    # <FIX> Such that virt-manager spawns
     virt-manager &
     echo cd ${SCRIPT_PATH}
+
     cd ${SCRIPT_PATH}
     echo "Repo path is ${REPO_PATH}"
 
@@ -516,6 +517,12 @@ function deploy {
             exit 1
         fi
 
+        fetch_config
+
+        sudo mkdir -p ${DEPLOYED_CFG_PATH}
+        sudo cp -f ${DEA} ${DEPLOYED_CFG_PATH}/dea.yaml
+        sudo cp -f ${DHA} ${DEPLOYED_CFG_PATH}/dha.yaml
+
         # Handle different deployer versions
         case "${FUEL_VERSION}" in
             "6.0")
@@ -531,7 +538,7 @@ function deploy {
         echo "Error: No deploy config directory for ${VERSION}"
         exit 1
     fi
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 
 #
@@ -543,134 +550,90 @@ function deploy {
 #
 
 function func_test {
-    PUSH_PATH=`pwd`
+    pushd `pwd` &> /dev/null
     cd ${SCRIPT_PATH}
     echo
     echo "========== Preparing func test =========="
     RESULT="ERROR - OPNV Functional test setup failed"
     STATUS="FUNCTEST_PREP"
     put_status
-    # Remove any residual of functest environment
-    rm -rf functest
-    rm -rf ${HOME}/functest
-    # Create result directory
-    mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result
 
-
-    # Get stack configuration and credentials
+    # Get deployed stack configuration
     echo "Get stack config...."
-    fetch_config
-    cd ${SCRIPT_PATH}/credentials
-    echo ./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD}
-    ./pull-cred ${FUEL_IP} ${FUEL_SSH_PASSWD}
+    DEA=${DEPLOYED_CFG_PATH}/dea.yaml
+    DHA=${DEPLOYED_CFG_PATH}/dha.yaml
 
-    # modify openrc with public AUTH access end point
-    if [ ! -e openrc ]; then
-        echo "Fetching openrc failed"
+    if [ ! -f $DEA ]; then
+        echo "Could not find deployed DEA file $DEA"
         exit 1
     fi
-    mv openrc openrc.orig
-    EXT_AUTH_URL="'http:\/\/${OS_IP}:5000\/v2.0\/'"
-    OS_AUTH_LINE=`grep -n OS_AUTH_URL openrc.orig | cut -d \: -f 1`
 
-    # <FIX> Workaround due to that I cant get su working - quote escape issue
-    #su -c "cat openrc.orig | sed "'${OS_AUTH_LINE}'s/.*/'"export OS_AUTH_URL=${EXT_AUTH_URL}"'/' > openrc" ${USER}
-    cat openrc.orig | sed ''${OS_AUTH_LINE}'s/.*/'"export OS_AUTH_URL=${EXT_AUTH_URL}"'/' > openrc
-    chown $USER openrc
-    chgrp $GROUP openrc
+    if [ ! -f $DHA ]; then
+        echo "Could not find deployed DHA file $DHA"
+        exit 1
+    fi
 
-    # Clone the functest repo and configure it
-    echo "Cloning functest...."
-    cd ${SCRIPT_PATH}
-    git clone https://git.opnfv.org/functest
-    echo "Copying configuration...."
-    cp config/config_functest.yaml functest/testcases/.
+    fetch_config
 
-    # Install functest
-    echo "Installing functest...."
-    # <FIX> Temporary worakround since the install doesnt run withn su
-    #su -c "source credentials/openrc && python functest/testcases/config_functest.py -d functest/ start" ${USER}
+    # Set up func-test docker connectivity
+    MGMT_SUB_IF="${MGMT_PHY_NETW}.${MGMT_VLAN}"
+    set +e
+    sudo ip addr del dev ${MGMT_SUB_IF} &> /dev/null
+    sudo ip link set ${MGMT_SUB_IF} down &> /dev/null
+    sudo ip link delete ${MGMT_SUB_IF} &> /dev/null
+    set -e
 
-    source credentials/openrc && python functest/testcases/config_functest.py -d functest/ start
+    echo "ip link add name ${MGMT_SUB_IF} link ${MGMT_PHY_NETW} type vlan id ${MGMT_VLAN}"
+    sudo ip link add name ${MGMT_SUB_IF} link ${MGMT_PHY_NETW} type vlan id ${MGMT_VLAN}
+    echo "ip link set ${MGMT_SUB_IF} up"
+    sudo ip link set ${MGMT_SUB_IF} up
+    echo "ip addr add ${MGMT_HOST_IP} dev ${MGMT_SUB_IF}"
+    sudo ip addr add ${MGMT_HOST_IP} dev ${MGMT_SUB_IF}
+
+    # Create result directories and files
+    mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest
+    mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally
+    mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping
+    mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl
+    touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log > /dev/null
+
+    # Pull func-test docker container
+    docker pull ${DOCKER_FUNCTEST_IMG}
+
+    # start functest docker container and bind mount the docker's /home/opnfv/result
+    # to the artifact test_result directory
+    FUNCTEST_CID=`docker run -dt -v ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result:/home/opnfv/result -e "INSTALLER_TYPE=fuel" -e "INSTALLER_IP=${FUEL_IP}" opnfv/functest`
+
+    # Redirect stdout to the log-file
+    tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log &
+    sleep 0.3
+    FUNC_TEST_LOGPID=$!
 
     echo
     echo "========== Running func tests =========="
-
-    echo
-    echo "========== Runing Tempest smoke test =========="
-    RESULT="ERROR OPNV Functional Tempest test failed"
-    STATUS="FUNCTEST_TEMPEST"
+    RESULT="ERROR OPNV Functional test failed"
+    STATUS="FUNCTEST"
     put_status
 
-    # Redirect stdout to the log-file
-    mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest
-    touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/result.log > /dev/null
-    tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/result.log &
-    sleep 0.3
-    TEMPEST_LOGPID=$!
+    # Start functest script inside the docker container
+    docker exec -t ${FUNCTEST_CID} /home/opnfv/repos/functest/docker/start.sh
 
-    # <FIX> Tempest cant run as other than root - root-cause is probably that func test cant install with su ".." $USER!
-    #su -c "source credentials/openrc && rally verify start smoke" ${USER}
-    source credentials/openrc && rally verify start smoke
+    # Stop logging
+    kill ${FUNC_TEST_LOGPID}
 
-    kill ${TEMPEST_LOGPID}
+    # Copying and formatting test results to the artifact's test_reult directory
+    docker exec -t ${FUNCTEST_CID} cp -f /home/opnfv/repos/rally/log.html /home/opnfv/result/rally/log.html
+    docker exec -t ${FUNCTEST_CID} cp -f /home/opnfv/repos/rally/report.html /home/opnfv/result/rally/report.html
 
-    if [ $SMOKE -eq 0 ]; then
-        echo
-        echo "========== Running Rally tests =========="
-        RESULT="ERROR - OPNV Functional Rally test failed"
-        STATUS="FUNCTEST_RALLY"
-        put_status
+    sed -n "/Functest: run vPing/","/Functest: run ODL suite/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping/test_results.log
+    sed -n "/Functest: run ODL suite/","/Functest: run Functest Rally Bench suites/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/test_results.log
+    sed -n "/Functest: run Tempest suite/","/Functest: copy results and clean Functest environment/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/test_results.log
+    sed -n "/Functest: run Functest Rally Bench suites/","/Functest: run Tempest suite/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/test_results.log
 
-        mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally
-        # <FIX> Rally cant run as other than root - root-cause is probably that func test cant install with su ".."
-        # <FIX> Until rally runs OK, set +e
-        set +e
-        #su -c "source credentials/openrc && python functest/testcases/VIM/OpenStack/CI/libraries/run_rally.py functest/ all" ${USER}
-        source credentials/openrc && python functest/testcases/VIM/OpenStack/CI/libraries/run_rally.py functest/ all
-        set -e
+    sudo chown -fR ${USER} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result
+    sudo chgrp -fR ${GROUP} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result
 
-        cp ~/functest/results/rally/*.html ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/. || :
-        cp ~/functest/results/rally/*.json ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/. || :
-
-        echo
-        echo "========== Runing ODL test =========="
-        RESULT="ERROR - OPNV Functional ODL test failed"
-        STATUS="FUNCTEST_ODL"
-        put_status
-
-        source credentials/openrc
-        functest/testcases/Controllers/ODL/CI/create_venv.sh
-        functest/testcases/Controllers/ODL/CI/start_tests.sh
-
-        mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl
-
-        cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.html ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/.
-        cp ./functest/testcases/Controllers/ODL/CI/logs/1/*.xml ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/.
-
-        echo
-        echo "========== Runing vPING test =========="
-        RESULT="ERROR - OPNV Functional vPING failed"
-        STATUS="FUNCTEST_VPING"
-        put_status
-
-        # Redirect stdout to the log-file
-        mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping
-        touch ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping/result.log > /dev/null
-        tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}\
-/test_result/vping/result.log &
-        sleep 0.3
-        VPING_LOGPID=$!
-
-        pushd ${SCRIPT_PATH}
-        source credentials/openrc
-        python functest/testcases/vPing/CI/libraries/vPing.py -d functest/
-        popd
-
-        kill $VPING_LOGPID
-    fi
-
-    cd $PUSH_PATH
+    popd &> /dev/null
 }
 
 #
@@ -682,25 +645,21 @@ function func_test {
 #
 
 function clean {
+    pushd `pwd` &> /dev/null
     # DEBUG Option, set ANY_CLEAN=0 if you want to preserve the environment untouched!
     DEBUG_ANY_CLEAN=1
     if [ $DEBUG_ANY_CLEAN -eq 1 ]; then
-        PUSH_PATH=`pwd`
         echo
         echo "========== Cleaning up environment =========="
         STATUS="CLEANING"
         put_status
 
-        cd ${SCRIPT_PATH}
-        # <Fix> Such that clean up can use su
-        #su -c "source credentials/openrc && python functest/testcases/config_functest.py -f -d functest/ clean" ${USER}
-        if [ -e "credentials/openrc" ]; then
-            cd ${SCRIPT_PATH} && source credentials/openrc && python functest/testcases/config_functest.py -f -d functest/ clean
+        if [ ! -z ${FUNCTEST_CID} ]; then
+            docker rm -f ${FUNCTEST_CID}
         fi
-        cd ${SCRIPT_PATH} && rm -rf functest
-        cd ${HOME} && rm -rf functest
+        docker rmi -f ${DOCKER_FUNCTEST_IMG}
+
         cd ${SCRIPT_PATH} && rm -rf fuel
-        cd ${SCRIPT_PATH} && rm -rf credentials/openrc*
         cd ${SCRIPT_PATH} && rm -rf output.txt
 
         # <FIX> Need to fix removal of virtual env.
@@ -711,7 +670,7 @@ function clean {
         #      clean up ALL
         #    fi
     fi
-cd $PUSH_PATH
+    popd &> /dev/null
 }
 
 #
@@ -735,7 +694,7 @@ fi
 GIT_HTTPS_SRC="https://gerrit.opnfv.org/gerrit/fuel"
 BUILD_CACHE="${SCRIPT_PATH}/cache"
 BUILD_CACHE_URI="file://${BUILD_CACHE}"
-BUILD_ARTIFACT_STORE="artifact"
+BUILD_ARTIFACT_STORE="${SCRIPT_PATH}/artifact"
 RESULT_FILE="result.log"
 VERSION=`date -u +%F--%H.%M`
 ISO="opnfv-${VERSION}.iso"
@@ -748,7 +707,12 @@ if [ -n "${DEPLOYTGT}" ]; then
 else
     DEPLOY_CONFIG="default_no_ha"
 fi
+
+DOCKER_FUNCTEST_IMG="opnfv/functest"
 STATUS_FILE_PATH="/var/run/fuel"
+STATUS_FILE="${STATUS_FILE_PATH}/ci-status"
+DEPLOYED_CFG_PATH=${STATUS_FILE_PATH}/deployed_cfg
+
 BUILD=1
 DEPLOY=1
 TEST=1
@@ -850,6 +814,8 @@ do
 
         t)
             SMOKE=1
+            echo "-t, smoke-test only, is not yet supported"
+            exit 1
             ;;
 
         I)
@@ -871,13 +837,12 @@ do
     esac
 done
 
-if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
+if [ $LOCAL_PATH_PROVIDED -eq 1 ] || [ $BUILD -eq 0 ]; then
     BRANCH="NIL"
     COMMIT_ID="NIL"
 fi
 
 eval_params
-
 
 # Validate branch/change/tag
 if [ $BRANCH_PROVIDED -eq 1 ]; then
@@ -949,11 +914,6 @@ if [ $TEST -eq 0 ]; then
 else
  echo "Test: ===Staged==="
 fi
-#<FIX> Temporary test stub - must be removed before <MERGE>
-#echo "Test finished - exiting"
-#RESULT="SUCCESS"
-#rc=0
-#exit 0
 
 if [ $BUILD -eq 1 ]; then
     time0=`date +%s`
