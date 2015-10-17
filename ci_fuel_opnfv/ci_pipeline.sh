@@ -17,12 +17,15 @@ do_exit () {
     if [ $? -eq 130 ]; then
         RESULT="INFO CI-pipeline interrupted"
     fi
+
     if [ ${rc} -ne 0 ]; then
+        echo "#################################################################"
         if [ -d  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION} ]; then
             echo "FAILED - see the log for details: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"
         else
             echo "FAILED - see the log for details: ${RESULT_FILE}"
         fi
+        echo "#################################################################"
     fi
     TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME];
     put_result;
@@ -103,19 +106,25 @@ usage: $me [-h] [-a deploy_config] [-u local user] |
    option,
 -i iso image (needed if build stage is skipped and no previous deployment
     exists), this option assumes the -B option.
--p Post run - Purge all including running deployment - but excluding cache
--P Post run - purge ALL
+-p Post run - Purge running deployment.
+-P Post run - purge ALL, leaving the system as after ci_pipeline was cleanly
+   installed. E.g. $me -P -BDT will clean ci_pipeline to it's install state.
 
 Examples:
-$me -b master -  (Clones, Builds, Deploys & Tests out of the master
-   branch)
-$me -b stable/arno  -  (Clones, Builds, Deploys & Tests out of
-  stable/arno branch)
-$me -b refs/changes/41/941/1 (Clones, Builds, Deploys & Tests out
-  of the non merged patch "/41/941/1")
-$me -b master -DT - (Only builds master)
-$me -T - (Only tests an existing deployment)
-$me -BDT -P (Purges all except the installation)
+$me -b master - Clones-, Builds-, Deploys- & Functests the origin master
+   branch
+$me -b stable/arno - Clones-, Builds-, Deploys- & functests the origin
+   stable/arno branc)
+$me -b refs/changes/41/941/1 - Clones-, Builds-, Deploys- & functests
+   the non-merged patch "/41/941/1"
+$me -b master -DT - Clones- and builds origin master (omits deploy and functest)
+$me -b master -T - Clones-, builds-, and deploys origin master (omits functest)
+$me -BD - Tests an existing deployment
+$me -b master -p -  Clones-, Builds-, Deploys- & Tests out of the master
+   branch after which the the deployment environment is removed
+$me -BDT -p - (Does nothing but) Purges previous virtual deployment
+$me -BDT -P - (Does nothing but) Purges every thing  except the installation, leaving
+    a fresh installation
 
 NOTE: THIS SCRIPT MAY NOT BE RAN AS ROOT
 EOF
@@ -361,7 +370,8 @@ function check_avail {
     #
 
     # create empty lock file if none exists
-    sudo touch ${PID_LOCK_FILE}
+    sudo mkdir -p ${STATUS_FILE_PATH} &> /dev/null
+    sudo touch ${PID_LOCK_FILE} &> /dev/null
 
     # if lastPID is not null and a process with that pid exist, exit
     set +e
@@ -372,6 +382,12 @@ function check_avail {
         RESULT="INFO - CI-pipeline busy"
         rc=100
         exit 100
+    fi
+    if [ ! -z "$lastPID" ]; then
+        PREVIOUS_CRASH=1
+        echo "Previous run crashed, need to clean before continuing....."
+        clean
+        PREVIOUS_CRASH=0
     fi
     # save my pid in the lock file
     sudo sh -c "echo $$ > ${PID_LOCK_FILE}"
@@ -459,21 +475,22 @@ function build {
     if [ $INVALIDATE_CACHE -ne 1 ]; then
         pushd ${REPO_PATH}/fuel/ci
         echo ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
-        ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
+        [ $DEBUG_DO_NOTHING -ne 1 ] && ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
+        [ $DEBUG_DO_NOTHING -eq 1 ] && mkdir -p ${BUILD_ARTIFACT_PATH} && touch ${BUILD_ARTIFACT_PATH}/opnfv-${VERSION}.iso && touch ${BUILD_ARTIFACT_PATH}/opnfv-${VERSION}.iso.txt
         popd
     else
         pushd ${REPO_PATH}/fuel/ci
         echo ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} -f P ${BUILD_ARTIFACT_PATH}
-        ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} -f P ${BUILD_ARTIFACT_PATH}
+        [ $DEBUG_DO_NOTHING -ne 1 ] && ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} -f P ${BUILD_ARTIFACT_PATH}
         popd
     fi
 
     echo mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}
     mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}
-    echo cp ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    echo cp -f ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
     cp ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
-    echo cp ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
-    cp ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    echo cp -f ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    cp -f ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
 
     cd $PUSH_PATH
 }
@@ -512,8 +529,12 @@ function deploy {
     fi
 
 
-    FUEL_VERSION=$(7z x -so $ISOFILE version.yaml 2>/dev/null \
+   if [ $DEBUG_DO_NOTHING -ne 1]; then
+       FUEL_VERSION=$(7z x -so $ISOFILE version.yaml 2>/dev/null \
         | grep release | sed 's/.*: "\(...\).*/\1/')
+   else
+       FUEL_VERSION="6.1"
+   fi
 
     if [ -n "${FUEL_VERSION}" ]; then
         echo "Fuel version is in ISO is ${FUEL_VERSION}"
@@ -535,6 +556,12 @@ function deploy {
             exit 1
         fi
 
+        fetch_config
+
+        sudo mkdir -p ${DEPLOYED_CFG_PATH}
+        sudo cp -f ${DEA} ${DEPLOYED_CFG_PATH}/dea.yaml
+        sudo cp -f ${DHA} ${DEPLOYED_CFG_PATH}/dha.yaml
+
         # Handle different deployer versions
         case "${FUEL_VERSION}" in
             "6.0")
@@ -543,7 +570,7 @@ function deploy {
                 ;;
             *)
                 echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
-                sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
                 ;;
         esac
     else
@@ -562,6 +589,7 @@ function deploy {
 #
 
 function func_test {
+#### TODO WHEN MERGING WITH THE FUNCTEST PATCH SET: [ $DEBUG_DO_NOTHING -ne 1 ] && <exec functest
     PUSH_PATH=`pwd`
     cd ${SCRIPT_PATH}
     echo
@@ -701,9 +729,8 @@ function func_test {
 #
 
 function clean {
-    # DEBUG Option, set ANY_CLEAN=0 if you want to preserve the environment untouched!
-    DEBUG_ANY_CLEAN=1
-    if [ $DEBUG_ANY_CLEAN -eq 1 ]; then
+    set +e
+    if [ $DEBUG_NO_CLEAN -eq 0 ]; then
         PUSH_PATH=`pwd`
         echo
         echo "========== Cleaning up environment =========="
@@ -716,21 +743,41 @@ function clean {
         if [ -e "credentials/openrc" ]; then
             cd ${SCRIPT_PATH} && source credentials/openrc && python functest/testcases/config_functest.py -f -d functest/ clean
         fi
-        cd ${SCRIPT_PATH} && rm -rf functest
-        cd ${HOME} && rm -rf functest
-        cd ${SCRIPT_PATH} && rm -rf fuel
-        cd ${SCRIPT_PATH} && rm -rf credentials/openrc*
-        cd ${SCRIPT_PATH} && rm -rf output.txt
+        cd ${SCRIPT_PATH} && rm -rf functest &> /dev/null
+        cd ${HOME} && rm -rf functest &> /dev/null
+        cd ${SCRIPT_PATH} && rm -rf fuel &> /dev/null
+        cd ${SCRIPT_PATH} && rm -rf credentials/openrc* &> /dev/null
+        cd ${SCRIPT_PATH} && rm -rf output.txt &> /dev/null
+        sudo sh -c "cd ${SCRIPT_PATH} && fusermount -u ${SCRIPT_PATH}/fueltmp/origiso && rm -rf fueltmp" &> /dev/null
 
-        # <FIX> Need to fix removal of virtual env.
-        #    if [ $PURGE_MOST -eq 1 || $PURGE_ALL -eq 1 ]; then
-        #      clean virt env
-        #    fi
-        #    if [ PURGE_ALL -eq 1 ]; then
-        #      clean up ALL
-        #    fi
+        if [ PREVIOUS_CRASH -eq 0 ]; then
+            if [ $PURGE_ENV -eq 1 ] || [ $PURGE_ALL -eq 1 ]; then
+                for vm in `cat /var/run/fuel/deployed_cfg/dha.yaml | grep libvirtName: | cut -d ":" -f 2 | sed -e 's/^[[:space:]]*//'`; do
+                    echo "Destroying VM: $vm"
+                    virsh destroy $vm &> /dev/null
+                    virsh undefine $vm &> /dev/null
+                done
+
+                networks="fuel1 fuel2 fuel3 fuel4"
+                for nw in ${networks}; do
+                echo "Destroying network: $nw"
+                virsh net-destroy $nw &> /dev/null
+                virsh net-undefine $nw &> /dev/null
+                done
+
+                sudo rm -rf ${SCRIPT_PATH}/images &> /dev/null
+            fi
+
+            if [ $PURGE_ALL -eq 1 ]; then
+                rm -rf ${SCRIPT_PATH}/${BUILD_ARTIFACT_STORE} &> /dev/null
+                sudo rm -rf ${STATUS_FILE_PATH} &> /dev/null
+                rm -rf ${SCRIPT_PATH}/${RESULT_FILE} &> /dev/null
+                rm -rf ${BUILD_CACHE} &> /dev/null
+            fi
+        fi
     fi
 cd $PUSH_PATH
+set -e
 }
 
 #
@@ -769,7 +816,9 @@ else
 fi
 STATUS_FILE_PATH="/var/run/fuel"
 PID_LOCK_FILE="${STATUS_FILE_PATH}/PID"
+DEPLOYED_CFG_PATH=${STATUS_FILE_PATH}/deployed_cfg
 
+# Arg defaults
 BUILD=1
 DEPLOY=1
 TEST=1
@@ -781,16 +830,21 @@ LOCAL_PATH_PROVIDED=0
 BRANCH_PROVIDED=0
 USER_PROVIDED=0
 INVALIDATE_CACHE=0
-PURGE_MOST=0
+PURGE_ENV=0
 PURGE_ALL=0
 
-#RESULT-CODES
+# DEBUG OPTIONS:
+DEBUG_DO_NOTHING=0
+DEBUG_NO_CLEAN=0
+
+# INIT VALUES:
 RESULT="ERROR - Script initialization failed"
 COMMIT_ID="NIL"
 TOTAL_TIME=0
 BUILD_TIME=0
 DEPLOY_TIME=0
 TEST_TIME=0
+PREVIOUS_CRASH=0
 rc=1
 
 #
@@ -800,6 +854,21 @@ rc=1
 ############################################################################
 # Start of main
 #
+
+# DEBUG Options
+# Script development debug options - these options are intended to be used for
+# the development- and verification of this script.
+#
+# DEBUG_DO_NOTHING=1 runs the pipeline without actually performing the time consuming
+# tasks of build, deploy or test, but yet producing dummy dummy results needed to
+# complete the pipeline run successfully.
+# Default is: DEBUG_DO_NOTHING=0
+#DEBUG_DO_NOTHING=1
+
+# DEBUG Option, set DEBUG_NO_CLEAN=1 if you want to preserve the full environment
+# untouched, and preserved after the pipeline run.
+# Default is: DEBUG_NO_CLEAN=0
+#DEBUG_NO_CLEAN=1
 
 # Set less restrictive umask so that files are accessible by libvirt
 umask 0002
@@ -878,7 +947,7 @@ do
             ;;
 
         p)
-            PURGE_MOST=1
+            PURGE_ENV=1
             ;;
 
         P)
@@ -970,11 +1039,7 @@ if [ $TEST -eq 0 ]; then
 else
  echo "Test: ===Staged==="
 fi
-#<FIX> Temporary test stub - must be removed before <MERGE>
-#echo "Test finished - exiting"
-#RESULT="SUCCESS"
-#rc=0
-#exit 0
+
 
 if [ $BUILD -eq 1 ]; then
     time0=`date +%s`
@@ -1006,7 +1071,7 @@ fi
 
 if [ $TEST -eq 1 ]; then
     time0=`date +%s`
-    func_test
+    [ $DEBUG_DO_NOTHING -eq 0 ] && func_test
     time1=`date +%s`
     TEST_TIME=$[(time1-time0)/60]
     echo
@@ -1019,25 +1084,56 @@ fi
 RESULT="SUCCESS"
 TOTAL_TIME=$[BUILD_TIME+DEPLOY_TIME+TEST_TIME]
 echo
+echo "#################################################################"
+echo "================================================================="
+echo "                          Total Sucess                           "
+echo "                     Total CI time: ${TOTAL_TIME} min            "
+echo "================================================================="
 echo
 echo "================================================================="
-echo "========================= Total Sucess  ========================="
-echo "==================== Total CI time: ${TOTAL_TIME} min ====================="
-echo "============ Open OPNVF resources as indicated below: ==========="
-echo "================ Fuel GUI: http://${FUEL_IP}:8000 ================"
-echo "======== OpenStack Horizon GUI: http://${OS_IP}:80 =========="
-echo "=========== OpenDaylight GUI: http://${OS_IP}:???? ============"
-echo
 if [ $BUILD -eq 1 ]; then
-#  if .. provide status of used repo!
-    echo "iso image is at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO}"
+
+    echo "Build iso image is at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO}"
+    if [ $LOCAL_PATH_PROVIDED -ne 1 ]; then
+        echo "It was built from repository sha1: `cd ${REPO_PATH} && git rev-parse ${BRANCH}`"
+    else
+        echo "It was built from local path: ${LOCAL_PATH}"
+    fi
 else
-    echo "Status of repo/image unknown - local iso was used"
+    if [ $DEPLOY -eq 1 ]; then
+        echo "Status of repository is unknown - local iso: $LOCAL_ISO was used"
+    else
+        if [ $TEST -eq 1 ]; then
+            echo "Status of repository and iso is unknown - performed functest on existing deployment"
+        else
+            echo "No Build- Deploy- or functest was run - no artifacts except logs were produced"
+        fi
+    fi
 fi
-echo "log file is at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"
-echo "test results are at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test-result/"
 echo "================================================================="
 echo
+
+if [ $DEPLOY -eq 1 ]; then
+    echo "================================================================="
+    echo "Access the deployed OPNVF resources as indicated below:"
+    echo "Fuel GUI: http://${FUEL_IP}:8000"
+    echo "OpenStack Horizon GUI: http://${OS_IP}:80"
+    echo "OpenDaylight GUI: http://${OS_IP}:????"
+    echo "================================================================="
+    echo
+fi
+
+if [ $TEST -eq 1 ]; then
+    echo "================================================================="
+    echo "test results are at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test-result/"
+    echo "================================================================="
+    echo
+fi
+
+echo "================================================================="
+echo "log file is at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log"
+echo "================================================================="
+echo "#################################################################"
 echo
 
 rc=0
