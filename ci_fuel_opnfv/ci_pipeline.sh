@@ -902,7 +902,6 @@ eval_params
 
 # Validate branch/change/tag
 if [ $BRANCH_PROVIDED -eq 1 ]; then
-    BRANCH=$2
 
     matchcnt=$(getspec $BRANCH | wc -l)
     if [ $matchcnt -eq 0 ]; then
