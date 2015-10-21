@@ -624,12 +624,14 @@ function func_test {
 
     # start functest docker container and bind mount the docker's /home/opnfv/result
     # to the artifact test_result directory
-    FUNCTEST_CID=`docker run -dt -v ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result:/home/opnfv/result -e "INSTALLER_TYPE=fuel" -e "INSTALLER_IP=${FUEL_IP}" opnfv/functest`
+    FUNCTEST_CID=`docker run -dt -v ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result:/home/opnfv/result -v ${FUNCTEST_CONFIG}:/home/opnfv/functest/conf/config_functest.yaml -e "INSTALLER_TYPE=fuel" -e "INSTALLER_IP=${FUEL_IP}" ${DOCKER_FUNCTEST_IMG}`
 
     # Redirect stdout to the log-file
     tail -n 0 -f ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/ci.log > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log &
     sleep 0.3
     FUNC_TEST_LOGPID=$!
+
+    [ $DEBUG_DO_NOTHING -ne 1 ] && docker exec -t ${FUNCTEST_CID} /home/opnfv/repos/functest/docker/prepare_env.sh
 
     echo
     echo "========== Running func tests =========="
@@ -638,19 +640,23 @@ function func_test {
     put_status
 
     # Start functest script inside the docker container
-    [ $DEBUG_DO_NOTHING -ne 1 ] && docker exec -t ${FUNCTEST_CID} /home/opnfv/repos/functest/docker/start.sh
+    [ $DEBUG_DO_NOTHING -ne 1 ] && docker exec -t ${FUNCTEST_CID} /home/opnfv/repos/functest/docker/run_tests.sh
 
     # Stop logging
     kill ${FUNC_TEST_LOGPID}
 
-    # Copying and formatting test results to the artifact's test_reult directory
-    docker exec -t ${FUNCTEST_CID} cp -f /home/opnfv/repos/rally/log.html /home/opnfv/result/rally/log.html
-    docker exec -t ${FUNCTEST_CID} cp -f /home/opnfv/repos/rally/report.html /home/opnfv/result/rally/report.html
+    # Formatting test results to the artifact's test_reult directory
+    # vPing
+    sed -n "/---------- Running vPING test case  ----------/","/----------- Running ODL test case  -----------/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping/test_results.log
 
-    sed -n "/Functest: run vPing/","/Functest: run ODL suite/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/vping/test_results.log
-    sed -n "/Functest: run ODL suite/","/Functest: run Functest Rally Bench suites/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/test_results.log
-    sed -n "/Functest: run Tempest suite/","/Functest: copy results and clean Functest environment/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/test_results.log
-    sed -n "/Functest: run Functest Rally Bench suites/","/Functest: run Tempest suite/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/test_results.log
+    # ODL
+    sed -n "/----------- Running ODL test case  -----------/","/--------- Running Rally bench suite  ---------/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/odl/test_results.log
+
+    # Tempest
+    sed -n "/-------- Running Tempest smoke tests  --------/","/Functest: copy results and clean Functest environment/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/tempest/test_results.log
+
+    # Rally
+    sed -n "/--------- Running Rally bench suite  ---------/","/-------- Running Tempest smoke tests  --------/p" ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/test_results.log | head -n -1 > ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/rally/test_results.log
 
     sudo chown -fR ${USER} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result
     sudo chgrp -fR ${GROUP} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result
@@ -747,8 +753,8 @@ if [ -n "${DEPLOYTGT}" ]; then
 else
     DEPLOY_CONFIG="default_no_ha"
 fi
-
-DOCKER_FUNCTEST_IMG="opnfv/functest"
+FUNCTEST_CONFIG=${SCRIPT_PATH}/config/functest/config_functest.yaml
+DOCKER_FUNCTEST_IMG="opnfv/functest:r2_20_22_15"
 STATUS_FILE_PATH="/var/run/fuel"
 STATUS_FILE="${STATUS_FILE_PATH}/ci-status"
 PID_LOCK_FILE="${STATUS_FILE_PATH}/PID"
@@ -1055,7 +1061,7 @@ fi
 
 if [ $TEST -eq 1 ]; then
     echo "================================================================="
-    echo "test results are at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test-result/"
+    echo "test results are at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/test_result/"
     echo "================================================================="
     echo
 fi
