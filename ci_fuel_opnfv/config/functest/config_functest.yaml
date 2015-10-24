@@ -1,0 +1,124 @@
+general:
+    directories:
+        # Relative to the path where the repo is cloned:
+        dir_vping:      testcases/vPing/CI/libraries/
+        dir_odl:        testcases/Controllers/ODL/CI/
+        dir_rally:      testcases/VIM/OpenStack/CI/libraries/
+        dir_rally_scn:  testcases/VIM/OpenStack/CI/suites/
+        dir_vIMS:       testcases/vIMS/CI/
+        dir_onos:       testcases/Controllers/ONOS/Teston/CI/
+
+        # Absolute path
+        dir_repos:          /home/opnfv/repos
+        dir_repo_functest:  /home/opnfv/repos/functest
+        dir_repo_rally:     /home/opnfv/repos/rally
+        dir_repo_releng:    /home/opnfv/repos/releng
+        dir_functest:       /home/opnfv/functest
+        dir_results:        /home/opnfv/functest/results
+        dir_functest_conf:  /home/opnfv/functest/conf
+        dir_rally_res:      /home/opnfv/functest/results/rally
+        dir_functest_data:  /home/opnfv/functest/data
+        dir_vIMS_data:      /home/opnfv/functest/data/vIMS
+        dir_rally_inst:     ~/.rally
+
+    repositories:
+        # branch and commit ID to which the repos will be reset (HEAD)
+        functest_branch:    master
+        functest_commit:    b3e241e1ee0e794ec732eddc5eaeb1f59dc1a999
+        releng_branch:  master
+        releng_commit:  976b5ae48a545c72c87f9e5dba9deee7e94ada94
+        rally_branch:   master
+        rally_commit:   9a17d8490e7fb4afee2f5629e6db41eabe4bc4d4
+
+    openstack:
+        image_name: functest-img
+        image_url:  http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img
+        image_disk_format:  qcow2
+
+
+        #Public network. Optional
+        neutron_public_net_name: net04_ext
+        neutron_public_subnet_name: net04_ext__subnet
+        neutron_public_subnet_cidr: 172.16.9.0/24
+        neutron_public_subnet_start: 172.16.9.130
+        neutron_public_subnet_end: 172.16.9.254
+        #Private network for functest. Will be created by config_functest.py
+        neutron_private_net_name: functest-net
+        neutron_private_subnet_name: functest-subnet
+        neutron_private_subnet_cidr: 192.168.120.0/24
+        neutron_private_subnet_start: 192.168.120.2
+        neutron_private_subnet_end: 192.168.120.254
+        neutron_private_subnet_gateway: 192.168.120.254
+        neutron_router_name: functest-router
+vping:
+    ping_timeout:   200
+    vm_flavor: m1.small #adapt to your environment
+    vm_name_1: opnfv-vping-1
+    vm_name_2: opnfv-vping-2
+    ip_1: 192.168.120.30
+    ip_2: 192.168.120.40
+
+vIMS:
+    general:
+        tenant_name: vIMS
+        tenant_description: vIMS Functionality Testing
+        base_image_url: http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+        base_image_name: ubuntu_14.04
+    cloudify:
+        blueprint:
+            url: https://github.com/boucherv-orange/cloudify-manager-blueprints.git
+            branch: "3.2-build"
+            file_name: "openstack-manager-blueprint.yaml"
+        inputs:
+            keystone_username: ""
+            keystone_password: ""
+            keystone_tenant_name: ""
+            keystone_url: ""
+            manager_public_key_name: 'cloudify-manager'
+            agent_public_key_name: 'cloudify-agent'
+            image_id: ""
+            flavor_id: "2"
+            external_network_name: ""
+            use_existing_manager_keypair: false
+            use_existing_agent_keypair: false
+            manager_server_name: cloudify-management-server
+            manager_server_user: ubuntu
+            manager_security_group_name: cloudify-sg-manager
+            agents_security_group_name: cloudify-sg-agents
+            manager_private_key_path: ~/.ssh/cloudify-manager-kp.pem
+            agent_private_key_path: ~/.ssh/cloudify-agent-kp.pem
+            agents_user: ubuntu
+            nova_url: ""
+            neutron_url: ""
+            resources_prefix: ""
+        inputs_path: openstack/inputs.yaml
+    clearwater:
+        blueprint:
+            file_name: 'openstack-blueprint.yaml'
+            name: "clearwater-opnfv"
+            destination_folder: "opnfv-cloudify-clearwater"
+            url: 'https://github.com/Orange-OpenSource/opnfv-cloudify-clearwater.git'
+            branch: "master"
+        deployment-name: 'clearwater-opnfv'
+        inputs:
+            image_id: ''
+            flavor_id: ''
+            agent_user: 'ubuntu'
+            external_network_name: ''
+            public_domain: clearwater.opnfv
+ONOS:
+    general:
+        onosbench_username: 'root'
+        onosbench_password: 'root'
+        onoscli_username: 'root'
+        onoscli_password: 'root'
+        runtimeout: 300
+    environment:
+        OCT: '189.42.8.99'
+        OC1: '189.42.8.101'
+        OC2: '189.42.8.102'
+        OC3: '189.42.8.103'
+        OCN: '189.42.8.104'
+        OCN2: '189.42.8.105'
+results:
+    test_db_url: http://213.77.62.197
