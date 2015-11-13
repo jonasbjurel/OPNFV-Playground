@@ -314,8 +314,8 @@ function eval_params {
     fi
 
     if [ $BUILD -eq 0 ]; then
-        if [ $BRANCH_PROVIDED -eq 1 ] || [ $COMMIT_ID_PROVIDED -eq 1 ] || [ $LOCAL_REPO_PROVIDED -eq 1 ] || [ $LOCAL_PATH_PROVIDED -eq 1 ] || [ $INVALIDATE_CACHE -eq 1 ]; then
-            echo "As build is disabled (-B), it does not make sense to specify either of the following options: a branch, a commit id (-c ...), a local repository (-r ...), a local path (-l ...), or to invalidate the build cache (-I)"
+        if [ $INVALIDATE_CACHE -eq 1 ]; then
+            echo "As build is disabled (-B), it does not make sense to invalidate the build cache (-I)"
             usage
             RESULT="ERROR - Faulty script input parameters"
             exit 1
@@ -559,7 +559,7 @@ function deploy {
                 ;;
         esac
     else
-        echo "Error: No deploy config directory for ${VERSION}"
+        echo "Error: No deploy config directory for ${FUEL_VERSION}"
         exit 1
     fi
     popd &> /dev/null
@@ -903,7 +903,7 @@ do
     esac
 done
 
-if [ $LOCAL_PATH_PROVIDED -eq 1 ] || [ $BUILD -eq 0 ]; then
+if [ $LOCAL_PATH_PROVIDED -eq 1 ]; then
     BRANCH="NIL"
     COMMIT_ID="NIL"
 fi
