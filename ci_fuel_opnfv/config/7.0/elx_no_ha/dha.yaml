@@ -15,21 +15,15 @@ nodes:
   libvirtName: controller1
   libvirtTemplate: templates/virtual_environment/vms/controller.xml
 - id: 2
-  libvirtName: controller2
-  libvirtTemplate: templates/virtual_environment/vms/controller.xml
-- id: 3
-  libvirtName: controller3
-  libvirtTemplate: templates/virtual_environment/vms/controller.xml
-- id: 4
   libvirtName: compute1
   libvirtTemplate: templates/virtual_environment/vms/compute.xml
-- id: 5
+- id: 3
   libvirtName: compute2
   libvirtTemplate: templates/virtual_environment/vms/compute.xml
-- id: 6
+- id: 4
   libvirtName: compute3
   libvirtTemplate: templates/virtual_environment/vms/compute.xml
-- id: 7
+- id: 5
   libvirtName: fuel-master
   libvirtTemplate: templates/virtual_environment/vms/fuel.xml
   isFuel: yes

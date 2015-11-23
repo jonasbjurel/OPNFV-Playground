@@ -531,6 +531,7 @@ function deploy {
     if [ -d "${SCRIPT_PATH}/config/${FUEL_VERSION}"  ]; then
         DEA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dea.yaml
         DHA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dha.yaml
+        PLUGINSCONF=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/plugins_conf
         if [ ! -f $DEA ]; then
             echo "Could not find DEA file $DEA"
             exit 1
@@ -546,6 +547,9 @@ function deploy {
         sudo mkdir -p ${DEPLOYED_CFG_PATH}
         sudo cp -f ${DEA} ${DEPLOYED_CFG_PATH}/dea.yaml
         sudo cp -f ${DHA} ${DEPLOYED_CFG_PATH}/dha.yaml
+        if [ -e ${PLUGINSCONF} ]; then
+            sudo cp -r ${PLUGINSCONF} ${DEPLOYED_CFG_PATH}/plugins_conf
+        fi
 
         # Handle different deployer versions
         case "${FUEL_VERSION}" in
@@ -553,9 +557,15 @@ function deploy {
                 echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
                 sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
                 ;;
-            *)
+            "6.1")
                 echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
                 [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                ;;
+            *)
+
+
+                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
+                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
                 ;;
         esac
     else
