@@ -577,7 +577,6 @@ function deploy {
                 ;;
 
             *)
-
                 echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
                 [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
                 ;;
