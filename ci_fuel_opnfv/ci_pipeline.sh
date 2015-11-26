@@ -193,7 +193,14 @@ error_exit() {
 }
 
 getspec() {
-    git ls-remote $GIT_HTTPS_SRC | grep -v '\^' |  grep $1 | awk '{ print $2 }'
+    if [ $LOCAL_REPO_PROVIDED -eq 0 ]; then
+        git ls-remote $GIT_HTTPS_SRC | grep -v '\^' |  grep $1 | awk '{ print $2
+ }'
+    else
+        pushd $LOCAL_REPO &> /dev/null
+        git show-ref | grep -v '\^' |  grep $1 | awk '{ print $2 }'
+        popd &> /dev/null
+    fi
 }
 
 checkout() {
