@@ -443,7 +443,14 @@ function clone_repo {
         COMMIT_ID="NIL"
     fi
 
-    BUILD_ARTIFACT_PATH="${REPO_PATH}/fuel/build_result"
+    # Check if new or old repo directory structure
+    if [ -e "${REPO_PATH}/fuel" ]; then
+        SUB_REPO_PATH="/fuel"
+    else
+        SUB_REPO_PATH=""
+    fi
+
+    BUILD_ARTIFACT_PATH="${REPO_PATH}${SUB_REPO_PATH}/build_result"
     echo "Commit ID is ${COMMIT_ID}"
     popd &> /dev/null
 }
@@ -468,13 +475,13 @@ function build {
     echo
     echo "========== Building  =========="
     if [ $INVALIDATE_CACHE -ne 1 ]; then
-        pushd ${REPO_PATH}/fuel/ci
+        pushd ${REPO_PATH}${SUB_REPO_PATH}/ci
         echo ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
         [ $DEBUG_DO_NOTHING -ne 1 ] && ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} ${BUILD_ARTIFACT_PATH}
         [ $DEBUG_DO_NOTHING -eq 1 ] && mkdir -p ${BUILD_ARTIFACT_PATH} && touch ${BUILD_ARTIFACT_PATH}/opnfv-${VERSION}.iso && touch ${BUILD_ARTIFACT_PATH}/opnfv-${VERSION}.iso.txt
         popd
     else
-        pushd ${REPO_PATH}/fuel/ci
+        pushd ${REPO_PATH}${SUB_REPO_PATH}/ci
         echo ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} -f P ${BUILD_ARTIFACT_PATH}
         [ $DEBUG_DO_NOTHING -ne 1 ] && ./build.sh -v ${VERSION} -c ${BUILD_CACHE_URI} -f P ${BUILD_ARTIFACT_PATH}
         popd
@@ -560,18 +567,18 @@ function deploy {
         # Handle different deployer versions
         case "${FUEL_VERSION}" in
             "6.0")
-                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
-                sudo python ${REPO_PATH}/fuel/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
+                echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
+                sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
                 ;;
+
             "6.1")
-                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
-                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
                 ;;
+
             *)
-
-
-                echo sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
-                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}/fuel/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
+                echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
+                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
                 ;;
         esac
     else
