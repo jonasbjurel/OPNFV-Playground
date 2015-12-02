@@ -489,10 +489,10 @@ function build {
 
     echo mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}
     mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}
-    echo cp -f ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
-    cp -f ${BUILD_ARTIFACT_PATH}/${ISO} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
-    echo cp -f ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
-    cp -f ${BUILD_ARTIFACT_PATH}/${ISO_META} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    echo cp -f ${BUILD_ARTIFACT_PATH}/*.iso  ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    cp -f ${BUILD_ARTIFACT_PATH}/*.iso ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    echo cp -f ${BUILD_ARTIFACT_PATH}/*.iso.txt ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
+    cp -f ${BUILD_ARTIFACT_PATH}/*.iso.txt ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}
 
     popd &> /dev/null
 }
@@ -521,7 +521,7 @@ function deploy {
     echo "Repo path is ${REPO_PATH}"
 
     if [ $BUILD -eq 1 ]; then
-       ISOFILE=${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO}
+       ISOFILE=`ls -1 ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/*.iso`
     else
        ISOFILE=${LOCAL_ISO}
     fi
@@ -766,8 +766,6 @@ BUILD_CACHE_URI="file://${BUILD_CACHE}"
 BUILD_ARTIFACT_STORE="${SCRIPT_PATH}/artifact"
 RESULT_FILE="result.log"
 VERSION=`date -u +%F--%H.%M`
-ISO="opnfv-${VERSION}.iso"
-ISO_META="${ISO}.txt"
 BRANCH="master"
 BRANCH_TYPE="heads"
 COMMITID=""
@@ -1052,6 +1050,8 @@ echo "================================================================="
 echo
 echo "================================================================="
 if [ $BUILD -eq 1 ]; then
+
+    ISO=$(basename $(ls -1 ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/*.iso))
 
     echo "Build iso image is at: ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/${ISO}"
     if [ $LOCAL_PATH_PROVIDED -ne 1 ]; then
