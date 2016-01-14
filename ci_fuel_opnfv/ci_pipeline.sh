@@ -67,17 +67,21 @@ usage ()
 $me - Simple Fuel@OPNFV CI Pipeline:
 1) Clones and check-out Fuel@OPNFV from OPNFV Repos"
 2) Builds Fuel@OPNFV
-3) Deploys a Fuel@OPNFV using local nested KVM virtualization
+3) Deploys a Fuel@OPNFV based on a given deployment scenario
+   using local nested KVM virtualization
 4) Performs basic health tests
 5) Perfoms ordinary OPNFV CI pipeline functional tests
 
 usage: $me [-h] [-a deploy_config] [-u local user] |
-       [-r local repo path | -l local path] [-b branch | -c change-set ] |
-       [-BDT] [-t] [-i Iso image] [-p | -P] [-I]
+       [-r local repo path | -l local path] [-b branch | -c change-set ]
+       [-n network configuration] [-s deplyment scenario] [-BDT] [-t]
+       [-i Iso image] [-p | -P] [-I]
 
 -h Prints this message.
 -a Deploys the named config from config/<Fuel version>/deploy_config. Defaults
    to "default_no_ha", or the content of the environment variable \$DEPLOYTGT.
+   NOTE: This argument is deprecated from OPNFV@FUEL 7.0. The new deployment
+   scenario framework should be used instead, See -r and -n
 -u local linux user, only needed if the script is not placed under the home of
    the user that should be used for non priviledged bash actions.
 -r Path to a local repository rather than using standard Fuel@OPNFV repo, this
@@ -89,6 +93,13 @@ usage: $me [-h] [-a deploy_config] [-u local user] |
    -c or -r options.
 -c Upstream commit to use, this option can not be combined with the -B, -b
    or -r options.
+-n Network configuration name corresponding to the directory names under
+   fuel/deploy/config/devel-pipeline [default|elx|...]. The network configuration
+   can also be provided by the environment variable \$NET_CONFIG
+-s Deployment scenario - the scenario configuration file name as found under
+   fuel/deploy/scenario/... or a scenario short-name as defined in
+   fuel/scenario/scenario.yaml. Eg. -s [os_no-ha | os_odl-l2_no-ha |
+   os_odl-l3_no-ha | os_onos_no-ha | ...]
 -I Invalidate cache, invalidates local cache and builds all from upstream,
    cannot be accompanioned with the -B option.
 -B Skip build stage, this option cannot be combined with the -r, -b, -c or -D
@@ -106,19 +117,32 @@ usage: $me [-h] [-a deploy_config] [-u local user] |
 
 Examples:
 $me -b master - Clones-, Builds-, Deploys- & Functests the origin master
-   branch
+   branch using the default "os_no-ha" deployment scenario and the "default"
+   network configuration.
 $me -b stable/arno - Clones-, Builds-, Deploys- & functests the origin
-   stable/arno branc)
+   stable/arno branch using the default "os_no-ha" deployment scenario and
+   the "default" network configuration..
 $me -b refs/changes/41/941/1 - Clones-, Builds-, Deploys- & functests
-   the non-merged patch "/41/941/1"
-$me -b master -DT - Clones- and builds origin master (omits deploy and functest)
-$me -b master -T - Clones-, builds-, and deploys origin master (omits functest)
+   the non-merged patch "/41/941/1" using the default "os_no-ha" deployment
+   scenario and the "default" network configuration.
+$me -b master -DT - Clones- and builds origin master (omits deploy and functest),
+    using the default "os_no-ha" deployment scenario and the "default" network
+    configuration.
+$me -b master -T - Clones-, builds-, and deploys origin master (omits functest),
+    using the default "os_no-ha" deployment scenario and the "default" network
+    configuration.
 $me -BD - Tests an existing deployment
-$me -b master -p -  Clones-, Builds-, Deploys- & Tests out of the master
+$me -b master -p - Clones-, Builds-, Deploys- & Tests out of the master
    branch after which the the deployment environment is removed
+$me -b master -s os_odl-l3_no-ha - Clones-, Builds-, Deploys- & Functests the
+     origin master branch using the "os_odl-l3_no-ha" deployment scenario and
+     the "default" network configuration.
+$me -b master -n elx - Clones-, Builds-, Deploys- & Functests the
+     origin master branch using the default "os_no-ha" deployment scenario and
+     the "elx" network configuration.
 $me -BDT -p - (Does nothing but) Purges previous virtual deployment
-$me -BDT -P - (Does nothing but) Purges every thing  except the installation, leaving
-    a fresh installation
+$me -BDT -P - (Does nothing but) Purges every thing except the installation,
+     leaving a fresh installation
 
 NOTE: THIS SCRIPT MAY NOT BE RAN AS ROOT
 EOF
@@ -410,7 +434,7 @@ function clone_repo {
     pushd ${SCRIPT_PATH}
     if [ ${LOCAL_PATH_PROVIDED} -eq 0 ]; then
         REPO_PATH=${SCRIPT_PATH}/"fuel"
-        rm -rf ${REPO_PATH}
+        sudo rm -rf ${REPO_PATH}
         if [ $LOCAL_REPO_PROVIDED -eq 1 ]; then
             echo
             echo "========== Cloning local ${LOCAL_REPO} =========="
@@ -541,49 +565,80 @@ function deploy {
         exit 1
     fi
 
-    if [ -d "${SCRIPT_PATH}/config/${FUEL_VERSION}"  ]; then
-        DEA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dea.yaml
-        DHA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dha.yaml
-        PLUGINSCONF=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/plugins_conf
-        if [ ! -f $DEA ]; then
-            echo "Could not find DEA file $DEA"
+    if [ "$FUEL_VERSION" == "6.0" ] || [ "$FUEL_VERSION" == "6.1" ]; then
+        if [ -d "${SCRIPT_PATH}/config/${FUEL_VERSION}"  ]; then
+            DEA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dea.yaml
+            DHA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dha.yaml
+            PLUGINSCONF=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/plugins_conf
+            if [ ! -f $DEA ]; then
+                echo "Could not find DEA file $DEA"
+                exit 1
+            fi
+
+            if [ ! -f $DHA ]; then
+                echo "Could not find DHA file $DHA"
+                exit 1
+            fi
+
+            fetch_config
+
+            sudo mkdir -p ${DEPLOYED_CFG_PATH}
+            sudo cp -f ${DEA} ${DEPLOYED_CFG_PATH}/dea.yaml
+            sudo cp -f ${DHA} ${DEPLOYED_CFG_PATH}/dha.yaml
+            if [ -e ${PLUGINSCONF} ]; then
+                sudo cp -r ${PLUGINSCONF} ${DEPLOYED_CFG_PATH}/plugins_conf
+            fi
+
+        # Handle different deployer versions
+            case "${FUEL_VERSION}" in
+                "6.0")
+                    echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
+                    sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
+                    ;;
+
+                "6.1")
+                    echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                    [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
+                    ;;
+            esac
+        else
+            echo "Error: No deploy config directory for ${FUEL_VERSION}"
             exit 1
         fi
-
-        if [ ! -f $DHA ]; then
-            echo "Could not find DHA file $DHA"
-            exit 1
+    else
+        # Deploying 7.0 or newer with the deployment scenario framework
+        echo "Deploying with ${DEPLOY_SCENARIO} deployment scenario"
+        if [ $DEPLOY_CONFIG_PROVIDED == 1 ]; then
+            echo "You have provided argument -a ${DEPLOY_CONFIG}"
+            echo "This argument is deprecated from OPNFV@Fuel 7"
+            echo "A new deployment scenario framework is instead in place"
+            echo "Use -n [network config] -s [deployment scenario]"
+            echo "Example -n [default|elx|...] -s [os_no-ha|os_ha|...]"
+            echo "Ignoring -a ${DEPLOY_CONFIG}"
+        fi
+        if [ $NET_CONFIG_PROVIDED == 0 ]; then
+            echo "No Network configuration provided (-n network config) - using Default"
+        fi
+        if [ $DEPLOY_SCENARIO_PROVIDED == 0 ]; then
+            echo "No deployment scenario provided (-s scenario) - using Default ${DEPLOY_SCENARIO}"
         fi
 
-        fetch_config
-
+        echo sudo ${REPO_PATH}${SUB_REPO_PATH}/ci/deploy.sh -b file://${REPO_PATH}${SUB_REPO_PATH}/deploy/config -l devel-pipeline -p ${NET_CONFIG} -s ${DEPLOY_SCENARIO} -i file://${ISOFILE}
+        set +e
+        if [ $DEBUG_DO_NOTHING -ne 1 ]; then
+            sudo ${REPO_PATH}${SUB_REPO_PATH}/ci/deploy.sh -b file://${REPO_PATH}${SUB_REPO_PATH}/deploy/config -l devel-pipeline -p ${NET_CONFIG} -s ${DEPLOY_SCENARIO} -i file://${ISOFILE}
+            rc=$?
+        fi
+        set -e
+        DEA=${SCRIPT_PATH}/fuel/ci/config/dea.yaml
+        DHA=${SCRIPT_PATH}/fuel/ci/config/dha.yaml
         sudo mkdir -p ${DEPLOYED_CFG_PATH}
         sudo cp -f ${DEA} ${DEPLOYED_CFG_PATH}/dea.yaml
         sudo cp -f ${DHA} ${DEPLOYED_CFG_PATH}/dha.yaml
-        if [ -e ${PLUGINSCONF} ]; then
-            sudo cp -r ${PLUGINSCONF} ${DEPLOYED_CFG_PATH}/plugins_conf
-        fi
-
-        # Handle different deployer versions
-        case "${FUEL_VERSION}" in
-            "6.0")
-                echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
-                sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py ${ISOFILE} ${DEA} ${DHA}
-                ;;
-
-            "6.1")
-                echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
-                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA}
-                ;;
-
-            *)
-                echo sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
-                [ $DEBUG_DO_NOTHING -ne 1 ] && sudo python ${REPO_PATH}${SUB_REPO_PATH}/deploy/deploy.py -iso ${ISOFILE} -dea ${DEA} -dha ${DHA} -pc ${PLUGINSCONF}
-                ;;
-        esac
-    else
-        echo "Error: No deploy config directory for ${FUEL_VERSION}"
-        exit 1
+        sudo mkdir -p ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/deployed_cfg
+        sudo cp -f ${DEA} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/deployed_cfg/dea.yaml
+        sudo cp -f ${DHA} ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/deployed_cfg/dha.yaml
+        [ $rc -ne 0 ] && exit $rc
     fi
     popd &> /dev/null
 }
@@ -604,6 +659,7 @@ function func_test {
     put_status
 
     # Get deployed stack configuration
+    # Needs FIX for the deployment scenario framework
     echo "Get stack config...."
     DEA=${DEPLOYED_CFG_PATH}/dea.yaml
     DHA=${DEPLOYED_CFG_PATH}/dha.yaml
@@ -774,6 +830,12 @@ if [ -n "${DEPLOYTGT}" ]; then
 else
     DEPLOY_CONFIG="default_no_ha"
 fi
+DEPLOY_CONFIG_PROVIDED=0
+if [ -z $NET_CONFIG ]; then
+    NET_CONFIG="default"
+fi
+NET_CONFIG_PROVIDED=0
+
 FUNCTEST_CONFIG=${SCRIPT_PATH}/config/functest/config_functest.yaml
 DOCKER_FUNCTEST_IMG="opnfv/functest:r2_20_22_15"
 STATUS_FILE_PATH="/var/run/fuel"
@@ -788,6 +850,8 @@ TEST=1
 SMOKE=0
 LOCAL_ISO_PROVIDED=0
 COMMIT_ID_PROVIDED=0
+DEPLOY_SCENARIO="os-nosdn-nofeature-noha"
+DEPLOY_SCENARIO_PROVIDED=0
 LOCAL_REPO_PROVIDED=0
 LOCAL_PATH_PROVIDED=0
 BRANCH_PROVIDED=0
@@ -844,7 +908,7 @@ if [ "$(id -u)" == "0" ]; then
    exit 1
 fi
 
-while getopts "a:u:b:c:r:l:BDTi:tIpPh" OPTION
+while getopts "a:u:b:c:r:n:s:l:BDTi:tIpPh" OPTION
 do
     case $OPTION in
         h)
@@ -855,6 +919,7 @@ do
 
         a)
             DEPLOY_CONFIG=${OPTARG}
+            DEPLOY_CONFIG_PROVIDED=1
             ;;
 
         u)
@@ -880,6 +945,15 @@ do
         r)
             LOCAL_REPO=${OPTARG}
             LOCAL_REPO_PROVIDED=1
+            ;;
+
+        s)  DEPLOY_SCENARIO=${OPTARG}
+            DEPLOY_SCENARIO_PROVIDED=1
+            ;;
+
+        n)
+            NET_CONFIG=${OPTARG}
+            NET_CONFIG_PROVIDED=1
             ;;
 
         B)
