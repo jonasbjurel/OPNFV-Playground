@@ -565,7 +565,7 @@ function deploy {
         exit 1
     fi
 
-    if [ "$FUEL_VERSION" == "6.0" || "$FUEL_VERSION" == "6.1" ]; then
+    if [ "$FUEL_VERSION" == "6.0" ] || [ "$FUEL_VERSION" == "6.1" ]; then
         if [ -d "${SCRIPT_PATH}/config/${FUEL_VERSION}"  ]; then
             DEA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dea.yaml
             DHA=${SCRIPT_PATH}/config/${FUEL_VERSION}/${DEPLOY_CONFIG}/dha.yaml
@@ -607,7 +607,7 @@ function deploy {
         fi
     else
         # Deploying 7.0 or newer with the deployment scenario framework
-        echo "Deploying with ${DEPLOYMENT_SCENARIO} deployment scenario"
+        echo "Deploying with ${DEPLOY_SCENARIO} deployment scenario"
         if [ $DEPLOY_CONFIG_PROVIDED == 1 ]; then
             echo "You have provided argument -a ${DEPLOY_CONFIG}"
             echo "This argument is deprecated from OPNFV@Fuel 7"
@@ -850,7 +850,7 @@ TEST=1
 SMOKE=0
 LOCAL_ISO_PROVIDED=0
 COMMIT_ID_PROVIDED=0
-DEPLOY_SCENARIO="os_no-ha"
+DEPLOY_SCENARIO="os-nosdn-nofeature-noha"
 DEPLOY_SCENARIO_PROVIDED=0
 LOCAL_REPO_PROVIDED=0
 LOCAL_PATH_PROVIDED=0
