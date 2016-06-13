@@ -554,6 +554,11 @@ function deploy {
    if [ $DEBUG_DO_NOTHING -ne 1 ]; then
        FUEL_VERSION=$(7z x -so $ISOFILE version.yaml 2>/dev/null \
         | grep release | sed 's/.*: "\(...\).*/\1/')
+        if [ -z "${FUEL_VERSION}" ]; then
+           #9.0 method...
+           FUEL_VERSION=$(7z l $ISOFILE ubuntu/dists 2>/dev/null \
+        | grep 'ubuntu/dists/mos' | head -1 | sed 's/.*mos//')
+        fi
    else
        FUEL_VERSION="6.1"
    fi
