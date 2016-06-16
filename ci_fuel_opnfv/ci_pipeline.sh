@@ -628,10 +628,10 @@ function deploy {
             echo "No deployment scenario provided (-s scenario) - using Default ${DEPLOY_SCENARIO}"
         fi
 
-        echo sudo ${REPO_PATH}${SUB_REPO_PATH}/ci/deploy.sh -b file://${REPO_PATH}${SUB_REPO_PATH}/deploy/config -l devel-pipeline -p ${NET_CONFIG} -s ${DEPLOY_SCENARIO} -i file://${ISOFILE}
+        echo sudo ${REPO_PATH}${SUB_REPO_PATH}/ci/deploy.sh -b file://${REPO_PATH}${SUB_REPO_PATH}/deploy/config -l devel-pipeline -p ${NET_CONFIG} -s ${DEPLOY_SCENARIO} -i file://${ISOFILE} -L ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/deploy.log.tar.gz
         set +e
         if [ $DEBUG_DO_NOTHING -ne 1 ]; then
-            sudo ${REPO_PATH}${SUB_REPO_PATH}/ci/deploy.sh -b file://${REPO_PATH}${SUB_REPO_PATH}/deploy/config -l devel-pipeline -p ${NET_CONFIG} -s ${DEPLOY_SCENARIO} -i file://${ISOFILE}
+            sudo ${REPO_PATH}${SUB_REPO_PATH}/ci/deploy.sh -b file://${REPO_PATH}${SUB_REPO_PATH}/deploy/config -l devel-pipeline -p ${NET_CONFIG} -s ${DEPLOY_SCENARIO} -i file://${ISOFILE} -L ${BUILD_ARTIFACT_STORE}/${BRANCH}/${VERSION}/deploy.log.tar.gz
             rc=$?
         fi
         set -e
